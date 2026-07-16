@@ -1,0 +1,47 @@
+{
+  "env": {
+    "TZ": "Asia/Singapore"
+  },
+  "permissions": {
+    "defaultMode": "plan",
+    "deny": [
+      "Read(.devcontainer/.vault-radar-license)",
+      "Read(//workspace/.devcontainer/.vault-radar-license)",
+      "Edit(.pre-commit-config.yaml)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); sid=$(printf \"%s\" \"$input\" | jq -r \".session_id\"); date +%s > \"/tmp/claude-plan-approved-$sid\"",
+            "timeout": 10,
+            "statusMessage": "Recording plan approval..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(printf \"%s\" \"$input\" | jq -r \".tool_input.command\"); if printf \"%s\" \"$cmd\" | grep -qi \"vault-radar-license\"; then printf \"%s\" \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"Access to the Vault Radar license file is blocked. The license is fetched from Vault manually and must never enter the AI context.\\\"}}\"; fi",
+            "timeout": 10,
+            "statusMessage": "Checking license-file guard..."
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat); sid=$(printf \"%s\" \"$input\" | jq -r \".session_id\"); cmd=$(printf \"%s\" \"$input\" | jq -r \".tool_input.command\"); if printf \"%s\" \"$cmd\" | grep -qiE \"terraform +apply|kubectl +(apply|delete|rollout)|gh +release +create|docker +push|npm +publish|helm +(upgrade|install)|serverless +deploy|cdk +deploy|aws +deploy|eb +deploy|(^|/| )deploy(\\.sh)?( |$)|make +deploy|kamal +deploy\"; then marker=\"/tmp/claude-plan-approved-$sid\"; now=$(date +%s); if [ -f \"$marker\" ] && [ $((now - $(cat \"$marker\"))) -lt 14400 ]; then printf \"%s\" \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"allow\\\"}}\"; else printf \"%s\" \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"Deployment blocked: no approved plan found for this session, or the approval expired (valid for 4 hours). Enter Plan Mode, present a plan, and get it approved via ExitPlanMode before running deploy commands.\\\"}}\"; fi; else printf \"%s\" \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"allow\\\"}}\"; fi",
+            "timeout": 10,
+            "statusMessage": "Checking deployment gate..."
+          }
+        ]
+      }
+    ]
+  }
+}

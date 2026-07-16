@@ -1,0 +1,49 @@
+{
+  "name": "threat-modelling-with-ai",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "TZ": "${localEnv:TZ:Asia/Singapore}"
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12",
+      "installTools": true
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "runArgs": [
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "ms-python.python",
+        "eamodio.gitlens",
+        "yzhang.markdown-all-in-one"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      }
+    }
+  },
+  "remoteUser": "node",
+  "mounts": [
+    "source=ttm-ai-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=ttm-ai-claude-config-${devcontainerId},target=/home/node/.claude,type=volume"
+  ],
+  "remoteEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
+  "workspaceFolder": "/workspace",
+  // Egress firewall. Set FIREWALL=0 on the host to skip it (container isolation
+  // still applies; only the network allowlist is dropped).
+  //"postCreateCommand": "if [ \"${localEnv:FIREWALL:1}\" = \"0\" ]; then echo 'Firewall skipped (FIREWALL=0)'; else sudo /usr/local/bin/init-firewall.sh; fi"
+  "postCreateCommand": "pre-commit install"
+}

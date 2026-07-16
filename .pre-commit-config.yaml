@@ -1,0 +1,10 @@
+repos:
+- repo: local
+  hooks:
+    - id: vault-radar-scan
+      name: Vault Radar scan
+      description: Scans for secrets and sensitive data with HashiCorp Vault Radar
+      entry: script/radar-precommit.sh
+      language: system
+      pass_filenames: false
+      always_run: true
