@@ -21,6 +21,9 @@
     "vscode": {
       "extensions": [
         "anthropic.claude-code",
+        "openai.chatgpt",
+        "github.copilot",
+        "github.copilot-chat",
         "ms-python.python",
         "eamodio.gitlens",
         "yzhang.markdown-all-in-one"
@@ -33,11 +36,13 @@
   "remoteUser": "node",
   "mounts": [
     "source=ttm-ai-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
-    "source=ttm-ai-claude-config-${devcontainerId},target=/home/node/.claude,type=volume"
+    "source=ttm-ai-claude-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=ttm-ai-codex-config-${devcontainerId},target=/home/node/.codex,type=volume"
   ],
   "remoteEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "CODEX_HOME": "/home/node/.codex",
     "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
     "VAULT_USERNAME": "${localEnv:VAULT_USERNAME}",
     "VAULT_PASSWORD": "${localEnv:VAULT_PASSWORD}"

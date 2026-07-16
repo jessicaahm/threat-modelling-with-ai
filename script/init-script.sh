@@ -5,8 +5,7 @@
 # Bootstraps the Vault-side prerequisites so the agent (and this repo's
 # other tooling) can pull secrets/license keys from Vault at runtime,
 # instead of committing .env files or hardcoding LLM API keys.
-# See README.md: "Get secrets, license key from Vault".
-#
+also#
 # Prerequisites (NOT performed by this script):
 #   - `vault` CLI installed and on PATH
 #   - VAULT_TOKEN exported in the environment with an admin/root token
@@ -47,20 +46,6 @@ if [ -z "${VAULT_TOKEN:-}" ]; then
   exit 1
 fi
 
-echo "-- Checking connectivity to Vault at ${VAULT_ADDR} --"
-
-# `vault status` exits non-zero for sealed/uninitialized clusters too, which
-# is a *reachable* state -- so only fail on connection-level error
-# signatures, not on any non-zero exit.
-status_output=$(vault status 2>&1) || true
-if grep -qiE "connection refused|no such host|dial tcp|timeout|TLS handshake" <<<"${status_output}"; then
-  echo "ERROR: cannot reach Vault at ${VAULT_ADDR}:" >&2
-  echo "${status_output}" >&2
-  exit 1
-fi
-echo "OK: Vault is reachable."
-echo
-
 # --- KV v2 mount ---------------------------------------------------------
 
 echo "-- Ensuring KV v2 secrets engine is mounted at '${KV_MOUNT}/' --"
@@ -86,11 +71,8 @@ echo
 echo "-- Writing policy '${POLICY_NAME}' (full CRUD on ${KV_MOUNT}/) --"
 
 # `vault policy write` upserts, so this is inherently idempotent -- no
-# existence check needed here. It IS wrapped in a tested `|| { ... }`, same
-# as the mount-enable step above, so a failure (e.g. VAULT_TOKEN lacking
-# rights to manage ACL policies) prints a clear error instead of bubbling up
-# as a bare `set -e` exit with raw Vault CLI stderr.
-policy_output=$(vault policy write "${POLICY_NAME}" - <<EOF 2>&1
+# existence check needed here.
+vault policy write "${POLICY_NAME}" - <<EOF
 # Full CRUD access to the ${KV_MOUNT} KV v2 secrets engine.
 # Assign a user/identity to the "${POLICY_NAME}" policy (separate, manual
 # step -- not done by this script) to grant it these rights.
@@ -110,18 +92,6 @@ path "${KV_MOUNT}/metadata/*" {
   capabilities = ["read", "list", "delete"]
 }
 EOF
-) || {
-  echo "ERROR: failed to write policy '${POLICY_NAME}':" >&2
-  echo "${policy_output}" >&2
-  if grep -qi "permission denied" <<<"${policy_output}"; then
-    echo >&2
-    echo "This usually means VAULT_TOKEN lacks rights to manage ACL" >&2
-    echo "policies (sys/policies/acl/*). Confirm it's actually an" >&2
-    echo "admin/root token, per the prerequisites at the top of this" >&2
-    echo "script." >&2
-  fi
-  exit 1
-}
 
 echo "OK: policy '${POLICY_NAME}' written."
 echo

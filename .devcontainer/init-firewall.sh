@@ -44,6 +44,24 @@ ALLOWED_DOMAINS=(
   # OpenAI API -- LLM triage layer of the vulnerability-checker agent
   # (agent/vuln_agent --triage). Scanner verdicts never depend on it.
   "api.openai.com"
+  # OpenAI Codex CLI -- "Sign in with ChatGPT" OAuth (auth.openai.com) and
+  # subscription inference/backend calls (chatgpt.com). api.openai.com above
+  # also covers token exchange.
+  "auth.openai.com"
+  "chatgpt.com"
+  # GitHub Copilot (VS Code extension). Auth/user-management on github.com and
+  # api.github.com is already covered by the GitHub IP ranges above; these are
+  # the Copilot-specific hosts (not in GitHub's meta ranges). See
+  # https://docs.github.com/en/copilot/reference/allowlist-reference
+  # NOTE: individual/Pro plan hosts. For Copilot Business/Enterprise, swap the
+  # *.individual.githubcopilot.com hosts for the .business / .enterprise ones.
+  "api.githubcopilot.com"
+  "api.individual.githubcopilot.com"
+  "proxy.individual.githubcopilot.com"
+  "copilot-proxy.githubusercontent.com"
+  "origin-tracker.githubusercontent.com"
+  "copilot-telemetry.githubusercontent.com"
+  "default.exp-tas.com"
   # Semgrep rule registry (only needed if scanning with --config auto /
   # p/ rulesets instead of the vendored rules the agent defaults to)
   "semgrep.dev"

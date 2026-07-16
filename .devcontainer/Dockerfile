@@ -51,8 +51,8 @@ RUN mkdir /commandhistory \
 # Claude Code reads this to know it is running in a container.
 ENV DEVCONTAINER=true
 
-RUN mkdir -p /workspace /home/$USERNAME/.claude && \
-  chown -R $USERNAME:$USERNAME /workspace /home/$USERNAME/.claude
+RUN mkdir -p /workspace /home/$USERNAME/.claude /home/$USERNAME/.codex && \
+  chown -R $USERNAME:$USERNAME /workspace /home/$USERNAME/.claude /home/$USERNAME/.codex
 
 WORKDIR /workspace
 
@@ -107,3 +107,10 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -x
 
 RUN npm install -g @anthropic-ai/claude-code
+
+# OpenAI Codex CLI. Auth uses "Sign in with ChatGPT" (subscription) and caches
+# tokens in $CODEX_HOME/auth.json, persisted via the .codex volume mounted in
+# devcontainer.json. The sign-in flow's localhost callback rides VS Code's
+# automatic port forwarding, and egress to auth.openai.com / chatgpt.com is
+# opened in init-firewall.sh.
+RUN npm install -g @openai/codex
