@@ -1,0 +1,64 @@
+# Vendored SAST rules for the vuln-agent semgrep scanner.
+#
+# Vendored (rather than --config auto) so scans are offline-deterministic
+# under the egress firewall and eval/eval-scanners.sh can pin rule IDs.
+# Extend by adding rules here or pointing "semgrep_rules" in
+# agent/vuln-agent.config.json at a registry ruleset.
+rules:
+  - id: python-subprocess-shell-true
+    languages: [python]
+    severity: ERROR
+    message: >
+      subprocess call with shell=True builds a shell command string --
+      command injection if any part is attacker-influenced. Pass an argv
+      list with shell=False instead.
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$FUNC(..., shell=True, ...)
+    metadata:
+      cwe: "CWE-78"
+
+  - id: python-eval-use
+    languages: [python]
+    severity: ERROR
+    message: >
+      eval() executes arbitrary code -- remote code execution if the input
+      is attacker-influenced. Use ast.literal_eval or explicit parsing.
+    pattern: eval(...)
+    metadata:
+      cwe: "CWE-95"
+
+  - id: python-yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: >
+      yaml.load without SafeLoader can instantiate arbitrary Python objects
+      from the document -- code execution on untrusted YAML. Use
+      yaml.safe_load.
+    patterns:
+      - pattern: yaml.load($X)
+    metadata:
+      cwe: "CWE-502"
+
+  - id: python-pickle-load
+    languages: [python]
+    severity: WARNING
+    message: >
+      Unpickling untrusted data executes arbitrary code. Use JSON or verify
+      the source is trusted.
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+    metadata:
+      cwe: "CWE-502"
+
+  - id: python-weak-hash-md5
+    languages: [python]
+    severity: INFO
+    message: >
+      MD5 is cryptographically broken; do not use it for anything
+      security-relevant. Use hashlib.sha256 (or usedforsecurity=False for
+      checksums).
+    pattern: hashlib.md5(...)
+    metadata:
+      cwe: "CWE-327"

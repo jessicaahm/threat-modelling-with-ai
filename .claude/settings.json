@@ -7,6 +7,8 @@
     "deny": [
       "Read(.devcontainer/.vault-radar-license)",
       "Read(//workspace/.devcontainer/.vault-radar-license)",
+      "Read(.devcontainer/.openai-api-key)",
+      "Read(//workspace/.devcontainer/.openai-api-key)",
       "Edit(.pre-commit-config.yaml)"
     ]
   },
@@ -30,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "input=$(cat); cmd=$(printf \"%s\" \"$input\" | jq -r \".tool_input.command\"); if printf \"%s\" \"$cmd\" | grep -qi \"vault-radar-license\"; then printf \"%s\" \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"Access to the Vault Radar license file is blocked. The license is fetched from Vault manually and must never enter the AI context.\\\"}}\"; fi",
+            "command": "input=$(cat); cmd=$(printf \"%s\" \"$input\" | jq -r \".tool_input.command\"); if printf \"%s\" \"$cmd\" | grep -qiE \"vault-radar-license|openai-api-key\"; then printf \"%s\" \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"Access to secret files (Vault Radar license / OpenAI API key) is blocked. They are fetched from Vault by helper scripts and must never enter the AI context.\\\"}}\"; fi",
             "timeout": 10,
             "statusMessage": "Checking license-file guard..."
           },

@@ -69,6 +69,34 @@ ENV SHELL=/bin/zsh
 
 RUN pipx install pre-commit
 
+# Scanner toolchain for the vulnerability-checker agent (agent/vuln_agent):
+# Semgrep for SAST, Trivy for dependency/SCA scanning. Trivy ships as a
+# GitHub release binary (no apt repo pinning needed); version pinned so the
+# eval harness expectations stay stable.
+RUN pipx install semgrep==1.170.0
+ARG TRIVY_VERSION=0.72.0
+RUN arch="$(dpkg --print-architecture)" && \
+  case "$arch" in \
+    amd64) t="Linux-64bit" ;; \
+    arm64) t="Linux-ARM64" ;; \
+    *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+  esac && \
+  curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${t}.tar.gz" \
+    | tar -xz -C /home/$USERNAME/.local/bin trivy && \
+  # Pre-bake the vulnerability DB so scans are offline-deterministic under
+  # the egress firewall; refresh happens on image rebuild (or in CI).
+  /home/$USERNAME/.local/bin/trivy image --download-db-only --cache-dir /home/$USERNAME/.cache/trivy || true
+
+# Vault Radar MCP server binary (used directly by .mcp.json's stdio transport --
+# no Docker required/available in this devcontainer).
+ARG VAULT_RADAR_MCP_SERVER_VERSION=1.0.0
+RUN arch="$(dpkg --print-architecture)" && \
+  curl -fsSL "https://releases.hashicorp.com/vault-radar-mcp-server/${VAULT_RADAR_MCP_SERVER_VERSION}/vault-radar-mcp-server_${VAULT_RADAR_MCP_SERVER_VERSION}_linux_${arch}.zip" \
+    -o /tmp/vault-radar-mcp-server.zip && \
+  unzip -o /tmp/vault-radar-mcp-server.zip -d /home/$USERNAME/.local/bin && \
+  rm /tmp/vault-radar-mcp-server.zip && \
+  chmod 0755 /home/$USERNAME/.local/bin/vault-radar-mcp-server
+
 RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.2.0/zsh-in-docker.sh)" -- \
   -p git \
   -p fzf \

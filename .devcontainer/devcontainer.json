@@ -38,12 +38,15 @@
   "remoteEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
-    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
+    "VAULT_USERNAME": "${localEnv:VAULT_USERNAME}",
+    "VAULT_PASSWORD": "${localEnv:VAULT_PASSWORD}"
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
   // Egress firewall. Set FIREWALL=0 on the host to skip it (container isolation
   // still applies; only the network allowlist is dropped).
   //"postCreateCommand": "if [ \"${localEnv:FIREWALL:1}\" = \"0\" ]; then echo 'Firewall skipped (FIREWALL=0)'; else sudo /usr/local/bin/init-firewall.sh; fi"
-  "postCreateCommand": "pre-commit install"
+  "postCreateCommand": "bash script/devcontainer-postcreate.sh",
+  "postStartCommand": "bash script/devcontainer-poststart.sh"
 }

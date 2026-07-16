@@ -3,5 +3,8 @@
     "allow": [
       "Bash(pre-commit run *)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "vault-radar"
+  ]
 }

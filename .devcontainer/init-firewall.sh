@@ -33,6 +33,24 @@ ALLOWED_DOMAINS=(
   # VS Code extensions / server bits
   "marketplace.visualstudio.com"
   "update.code.visualstudio.com"
+  # HCP Vault cluster -- vault login / kv get in validate-commits.sh,
+  # fetch-openai-key.sh, and init-script.sh. Was missing before the
+  # vuln-agent work: with the firewall on, all Vault access was blocked.
+  "vault-cluster-public-vault-289b32ee.99820ad2.z1.hashicorp.cloud"
+  # HashiCorp apt repo (vault / vault-radar package updates)
+  "apt.releases.hashicorp.com"
+  # HashiCorp release binaries (vault-radar-mcp-server, fetched at image build time)
+  "releases.hashicorp.com"
+  # OpenAI API -- LLM triage layer of the vulnerability-checker agent
+  # (agent/vuln_agent --triage). Scanner verdicts never depend on it.
+  "api.openai.com"
+  # Semgrep rule registry (only needed if scanning with --config auto /
+  # p/ rulesets instead of the vendored rules the agent defaults to)
+  "semgrep.dev"
+  # Trivy vulnerability DB (OCI artifact on GHCR; pre-baked into the image,
+  # this covers refreshes)
+  "ghcr.io"
+  "mirror.gcr.io"
 )
 
 iptables -F

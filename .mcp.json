@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+        "vault-radar": {
+            "command": "vault-radar-mcp-server",
+            "args": ["stdio"]
+        }
+    }
+}

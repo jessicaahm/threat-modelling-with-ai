@@ -1,0 +1,22 @@
+[project]
+name = "vuln-agent"
+version = "0.1.0"
+description = "DevSecOps vulnerability-checker agent: Vault Radar + Semgrep + Trivy scanner core with optional LLM triage"
+requires-python = ">=3.12"
+# The scanner core is stdlib-only by design: the security-critical path has
+# zero third-party dependencies to compromise.
+dependencies = []
+
+[project.optional-dependencies]
+# Only the LLM triage layer needs a third-party SDK.
+llm = ["openai>=1.40"]
+
+[project.scripts]
+vuln-agent = "vuln_agent.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["vuln_agent*"]

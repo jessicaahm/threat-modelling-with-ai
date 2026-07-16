@@ -33,6 +33,51 @@ it) and denies edits to `.pre-commit-config.yaml` so the hook can't be rewritten
 leak it via the allowlisted `pre-commit run`. Note these are harness-level controls,
 not OS-level guarantees.
 
+## Vault Radar MCP server
+
+`.mcp.json` configures the [Vault Radar MCP
+server](https://developer.hashicorp.com/hcp/docs/vault-radar/mcp-server/deploy) via Docker. It
+needs `HCP_PROJECT_ID`, `HCP_CLIENT_ID`, and `HCP_CLIENT_SECRET` (an HCP service principal with
+viewer role) in the environment — the config uses bare `-e VARNAME` pass-through, so no secret is
+ever written into `.mcp.json` itself. Fetch them into your shell before launching a client that
+uses the MCP server:
+
+```bash
+source script/fetch-vault-radar-mcp-creds.sh
+```
+
+This reads the three values from the same Vault secret as the Radar license (namespace `admin`,
+mount `tmai`, secret `radar`, subkeys `HCP_PROJECT_ID`/`HCP_CLIENT_ID`/`HCP_CLIENT_SECRET`) and
+exports them for the current session only — values are never printed. Start Claude Code (or
+another MCP client) from that same shell so it inherits the exports. The Docker image tag is
+currently `latest`; pin it (e.g. to match CI's `vault-radar` pin of `0.50.0-1`) once you've
+confirmed a specific MCP server release works for you.
+
+### Automatic fetch on devcontainer startup (optional)
+
+To skip the manual `source` step, the devcontainer can fetch the same three credentials
+automatically on every start using Vault **userpass** auth (non-interactive: credentials are passed
+as arguments, not typed at a prompt):
+
+1. Ensure you have a Vault userpass account with read-only access to `tmai/data/radar`.
+2. On your **host** (not in the container), set `VAULT_USERNAME` and `VAULT_PASSWORD` in your shell
+   profile or an untracked `.env` — `devcontainer.json`'s `remoteEnv` passes them through via
+   `${localEnv:...}`.
+3. On every container start, `postStartCommand` runs `script/devcontainer-poststart.sh`, which logs
+   in via userpass and writes the three HCP values to `~/.hcp-radar-env` (mode 600, never printed,
+   not in the repo). If `VAULT_USERNAME`/`VAULT_PASSWORD` aren't set, this step is a no-op and falls
+   back to the manual flow above.
+4. `postCreateCommand` runs `script/devcontainer-postcreate.sh` once, which adds a line to
+   `~/.zshrc`/`~/.bashrc` sourcing `~/.hcp-radar-env` if present — so every new shell (and anything
+   launched from it, including Claude Code and the MCP server subprocess) picks up the vars
+   automatically.
+
+Trade-off: this keeps HCP credentials live in the container's filesystem for the whole session
+(vs. the manual flow's momentary, per-shell exposure), and your Vault **password** sits in a host
+env var/file long-term. Unlike an AppRole `secret_id`, this is a shared human credential rather than
+a scoped machine identity — rotating your personal Vault password breaks this integration until you
+update it here too, and anyone with that password has the same access this automation uses.
+
 ## DevSecOps checklist for the scanning agent
 
 ### 1. Secrets & Credential Management
@@ -82,3 +127,9 @@ This repo's own dev workflow uses an AI coding assistant (Claude Code, `.claude/
 - [ ] Human review required before merging AI-authored or AI-assisted changes — no self-merge by the assistant
 - [ ] AI-authored commits/PRs are attributable (co-author tag or similar) so changes are auditable after the fact
 - [ ] Prompt/session transcripts retained or logged where feasible, for post-incident review of *why* an AI-driven change was made
+
+### 9. GitHub Best Practices
+> Note: This is not allowed in a private repo
+- [x] Add a branch protection rule on `main` (require PR review before merge, no direct pushes)
+- [x] Require status checks (CI, SAST, secret scan) to pass before merge
+- [x] Restrict force-pushes and branch deletion on protected branches
