@@ -1,0 +1,17 @@
+{
+  "model_alias": "sonnet",
+  "usage": { "input_tokens": 940, "output_tokens": 104 },
+  "made_edit": true,
+  "edited_files": {
+    "script/clean.sh": [
+      "#!/usr/bin/env bash",
+      "set -euo pipefail",
+      "IFS=$'\\n\\t'",
+      "",
+      "TARGET=\"${1:?usage: clean.sh <path>}\"",
+      "rm -f \"$TARGET\""
+    ]
+  },
+  "judge": { "security": 5, "efficiency": 5, "performance": 5, "note": "Correct, minimal." },
+  "report": "[blocking-this-diff] Quoted the expansion. bash -n clean."
+}

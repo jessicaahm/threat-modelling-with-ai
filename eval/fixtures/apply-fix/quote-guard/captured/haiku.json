@@ -1,0 +1,17 @@
+{
+  "model_alias": "haiku",
+  "usage": { "input_tokens": 940, "output_tokens": 96 },
+  "made_edit": true,
+  "edited_files": {
+    "script/clean.sh": [
+      "#!/usr/bin/env bash",
+      "set -euo pipefail",
+      "IFS=$'\\n\\t'",
+      "",
+      "TARGET=\"${1:?usage: clean.sh <path>}\"",
+      "rm -f \"$TARGET\""
+    ]
+  },
+  "judge": { "security": 5, "efficiency": 5, "performance": 5, "note": "One-line quoting fix, exactly the plan." },
+  "report": "[blocking-this-diff] Quoted $TARGET at script/clean.sh:6. bash -n clean."
+}

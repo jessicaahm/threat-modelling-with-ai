@@ -1,0 +1,8 @@
+{
+  "model_alias": "sonnet",
+  "usage": { "input_tokens": 910, "output_tokens": 70 },
+  "made_edit": false,
+  "edited_files": {},
+  "judge": { "security": 5, "efficiency": 5, "performance": 5, "note": "Correct bail." },
+  "report": "No change: line already quoted; bailing per contract."
+}

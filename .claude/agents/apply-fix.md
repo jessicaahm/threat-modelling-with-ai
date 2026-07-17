@@ -1,7 +1,7 @@
 ---
 name: apply-fix
 description: "Single-fix WRITER — receives ONE user-approved remediation plan and applies exactly that plan with surgical edits. Runs only after the `remediation` planner proposed the fix and the user approved it. One apply-fix subagent per approved finding. Edits source files only; never commits/pushes, never touches secrets, never redesigns the fix."
-model: sonnet
+model: haiku
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 

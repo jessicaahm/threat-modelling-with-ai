@@ -1,0 +1,12 @@
+{
+  "archetype": "secret-to-vault",
+  "target_file": "script/deploy.sh",
+  "expect_edit": true,
+  "scope_max_changed_lines": 6,
+  "shell_files": ["script/deploy.sh", "script/fetch-deploy-token.sh"],
+  "require_set_line": "set -euo pipefail",
+  "runnable": true,
+  "run_target": "script/deploy.sh",
+  "expect_run_exit": 0,
+  "forbid_stdout_regex": "ghp_|AKIA|Bearer [A-Za-z0-9]|eval-mock-not-a-real-secret"
+}

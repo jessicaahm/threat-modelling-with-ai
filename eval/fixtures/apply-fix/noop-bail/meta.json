@@ -1,0 +1,8 @@
+{
+  "archetype": "noop-bail",
+  "target_file": "script/clean.sh",
+  "expect_edit": false,
+  "scope_max_changed_lines": 0,
+  "shell_files": ["script/clean.sh"],
+  "require_set_line": "set -euo pipefail"
+}

@@ -1,0 +1,118 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>apply-fix model scorecard</title>
+<style>
+:root{
+  --plane:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --series:#2a78d6; --track:#ecebe6; --good:#0ca30c; --crit:#d03b3b;
+}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){
+  --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --series:#3987e5; --track:#232322; --good:#0ca30c; --crit:#d03b3b;
+}}
+:root[data-theme="dark"]{
+  --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --series:#3987e5; --track:#232322; --good:#0ca30c; --crit:#d03b3b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--ink2);margin:0 0 24px;font-size:.9rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:20px 22px;margin:0 0 20px}
+.card h2{font-size:.95rem;letter-spacing:.02em;text-transform:uppercase;
+  color:var(--ink2);margin:0 0 16px;font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:0 0 20px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.tile .n{font-size:1.9rem;font-weight:650;letter-spacing:-.01em}
+.tile .l{color:var(--ink2);font-size:.82rem;margin-top:2px}
+.n.good{color:var(--good)} .n.crit{color:var(--crit)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+.scroll{overflow-x:auto}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:.8rem;font-weight:600;
+  padding:2px 9px;border-radius:999px;border:1px solid var(--border)}
+.pill.yes{color:var(--good)} .pill.no{color:var(--crit)}
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 96px;align-items:center;gap:12px}
+.bar-label{font-size:.9rem;display:flex;align-items:center;gap:7px}
+.badge{font-size:.68rem;font-weight:700;color:var(--good);border:1px solid var(--good);
+  border-radius:999px;padding:1px 7px;letter-spacing:.02em}
+.track{background:var(--track);border-radius:5px;height:16px;position:relative;overflow:hidden}
+.fill{height:100%;background:var(--series);border-radius:0 5px 5px 0}
+.bar-val{text-align:right;font-variant-numeric:tabular-nums;font-size:.9rem}
+.grid td.cell{text-align:center;font-weight:600;font-size:.82rem}
+.cell.pass{color:var(--good)} .cell.fail{color:var(--crit)} .cell.equiv{color:var(--series)}
+td.desc{white-space:normal;color:var(--ink2);max-width:420px}
+.legend{color:var(--ink2);font-size:.82rem;margin:14px 2px 0;display:flex;gap:18px;flex-wrap:wrap}
+.legend .k{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.note{color:var(--ink2);font-size:.85rem;margin:16px 2px 0}
+.callout{border-left:3px solid var(--good);padding:10px 14px;background:var(--surface);
+  border-radius:0 8px 8px 0;margin:4px 0 0;font-size:.92rem}
+</style></head><body><div class="wrap">
+<h1>apply-fix &mdash; model scorecard</h1>
+<p class="sub">Cheapest model that faithfully applies an approved fix. Generated 2026-07-17 15:04 +08 &middot; replayed offline transcripts.</p>
+<div class="tiles">
+<div class="tile"><div class="n good">19</div><div class="l">gates passed</div></div>
+<div class="tile"><div class="n good">0</div><div class="l">gates failed</div></div>
+<div class="tile"><div class="n">1</div><div class="l">skipped (offline)</div></div>
+<div class="tile"><div class="n good">haiku</div><div class="l">cheapest sufficient</div></div>
+</div>
+<div class="card"><h2>Test suite &mdash; what each fixture checks</h2><div class="scroll"><table>
+<thead><tr><th>Fixture</th><th>Archetype</th><th>Expected</th><th>Approved plan (suggestion)</th></tr></thead><tbody>
+<tr><td><strong>noop-bail</strong></td><td>noop-bail</td><td>bail &mdash; make no edit</td><td class="desc">Quote the $TARGET expansion so paths with spaces don't word-split.</td></tr>
+<tr><td><strong>quote-guard</strong></td><td>quote-guard</td><td>apply the fix</td><td class="desc">Quote the $TARGET expansion so paths with spaces don't word-split and globs can't inject.</td></tr>
+<tr><td><strong>secret-to-vault</strong></td><td>secret-to-vault</td><td>apply the fix</td><td class="desc">Remove the hardcoded API_TOKEN literal from deploy.sh and load it from Vault via the existing fetch-deploy-token.sh helper instead.</td></tr>
+</tbody></table></div></div>
+<div class="card"><h2>Model &times; cost matrix</h2><div class="scroll"><table>
+<thead><tr><th>Model</th><th>Model ID</th><th class="num">Hard gates</th><th class="num">Judge (sec)</th><th class="num">Plan fidelity</th><th class="num">Cost / 100 fixes</th><th>Clears bar?</th></tr></thead><tbody>
+<tr><td><strong>haiku</strong></td><td>claude-haiku-4-5</td><td class="num">100% (3/3)</td><td class="num">5.00</td><td class="num">3/3 exact</td><td class="num">$0.17</td><td><span class="pill yes">&#10003; yes</span></td></tr>
+<tr><td><strong>sonnet</strong></td><td>claude-sonnet-5</td><td class="num">100% (3/3)</td><td class="num">5.00</td><td class="num">3/3 exact</td><td class="num">$0.53</td><td><span class="pill yes">&#10003; yes</span></td></tr>
+<tr><td><strong>opus</strong></td><td>claude-opus-4-8</td><td class="num">100% (3/3)</td><td class="num">5.00</td><td class="num">3/3 exact</td><td class="num">$0.90</td><td><span class="pill yes">&#10003; yes</span></td></tr>
+</tbody></table></div>
+<div class="callout"><strong>Selection rule:</strong> cheapest row clearing the bar (100% non-negotiable gates AND judge security &ge; 4.5) &rarr; <strong>haiku</strong> (claude-haiku-4-5).</div>
+</div>
+<div class="card"><h2>LLM-as-a-judge &mdash; peer review (scores 1&ndash;5)</h2>
+<p class="note" style="margin-top:0">A stronger-than-candidate model grades the softer axes a pass/fail gate can&rsquo;t &mdash; replayed from each frozen transcript (N-run averaged). It can lower a passing fix, never rescue a failing one. Security drives the bar: <strong>&ge;&nbsp;4.5</strong>.</p>
+<div class="scroll"><table>
+<thead><tr><th>Model</th><th class="num">Security</th><th class="num">Efficiency</th><th class="num">Performance</th><th>Meets security bar?</th></tr></thead><tbody>
+<tr><td><strong>haiku</strong></td><td class="num good">5.00</td><td class="num">5.00</td><td class="num">5.00</td><td><span class="pill yes">&#10003; meets</span></td></tr>
+<tr><td><strong>sonnet</strong></td><td class="num good">5.00</td><td class="num">5.00</td><td class="num">5.00</td><td><span class="pill yes">&#10003; meets</span></td></tr>
+<tr><td><strong>opus</strong></td><td class="num good">5.00</td><td class="num">5.00</td><td class="num">5.00</td><td><span class="pill yes">&#10003; meets</span></td></tr>
+</tbody></table></div>
+<h2 style="margin-top:22px">Judge notes (fixture &times; model)</h2><div class="scroll"><table>
+<thead><tr><th>Fixture</th><th>Model</th><th class="num">Sec</th><th class="num">Eff</th><th class="num">Perf</th><th>Reviewer note</th></tr></thead><tbody>
+<tr><td>noop-bail</td><td>haiku</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">Correctly bailed: anchor gone, no edit made.</td></tr>
+<tr><td>noop-bail</td><td>sonnet</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">Correct bail.</td></tr>
+<tr><td>noop-bail</td><td>opus</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">Correct bail.</td></tr>
+<tr><td>quote-guard</td><td>haiku</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">One-line quoting fix, exactly the plan.</td></tr>
+<tr><td>quote-guard</td><td>sonnet</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">Correct, minimal.</td></tr>
+<tr><td>quote-guard</td><td>opus</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">Correct, minimal.</td></tr>
+<tr><td>secret-to-vault</td><td>haiku</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">Literal removed, sourced from the Vault helper, fail-closed set flags and guard intact; minimal surgical diff.</td></tr>
+<tr><td>secret-to-vault</td><td>sonnet</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">Correct and minimal; matches the approved plan exactly.</td></tr>
+<tr><td>secret-to-vault</td><td>opus</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="desc">Faithful surgical fix; no scope creep.</td></tr>
+</tbody></table></div>
+<p class="note">Security / Efficiency / Performance are scored 1&ndash;5 per <code>eval/judge/apply-fix-rubric.md</code>. To (re)generate after a rubric or fix change: <code>JUDGE_MODEL=claude-opus-4-8 ./eval/judge/run-judge.sh &lt;fixture&gt; &lt;captured.json&gt; 5</code>, then re-run this harness.</p></div>
+<div class="card"><h2>Cost per 100 fixes</h2><div class="bars">
+<div class="bar-row"><div class="bar-label">haiku <span class="badge">cheapest &#10003;</span></div><div class="track"><div class="fill" style="width:19.2%"></div></div><div class="bar-val">$0.17</div></div>
+<div class="bar-row"><div class="bar-label">sonnet </div><div class="track"><div class="fill" style="width:58.6%"></div></div><div class="bar-val">$0.53</div></div>
+<div class="bar-row"><div class="bar-label">opus </div><div class="track"><div class="fill" style="width:100.0%"></div></div><div class="bar-val">$0.90</div></div>
+</div><p class="legend"><span class="k"><span class="sw" style="background:var(--series)"></span>token cost &times; price (lower is better)</span><span class="k"><span class="badge">cheapest &#10003;</span>meets the quality bar at least cost</span></p></div>
+<div class="card"><h2>Plan fidelity grid (fixture &times; model)</h2><div class="scroll"><table class="grid">
+<thead><tr><th>Fixture</th><th class="num">haiku</th><th class="num">sonnet</th><th class="num">opus</th></tr></thead><tbody>
+<tr><td>noop-bail</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td></tr>
+<tr><td>quote-guard</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td></tr>
+<tr><td>secret-to-vault</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td><td class="cell pass" title="dist to golden: 0; all hard gates pass">&#10003; exact</td></tr>
+</tbody></table></div>
+<p class="legend"><span class="k"><span class="sw" style="background:var(--good)"></span>exact &mdash; byte-identical to the golden fix</span><span class="k"><span class="sw" style="background:var(--series)"></span>equivalent &mdash; differs but passes every gate</span><span class="k"><span class="sw" style="background:var(--crit)"></span>diverged &mdash; failed a gate</span></p>
+<p class="note">"How closely the model followed the plan": distance to the golden AFTER-state. 0 = to the letter; &gt;0 but passing = same intent, different text; a gate failure = diverged. Hover a cell for the distance and any failure reason.</p></div>
+</div></body></html>

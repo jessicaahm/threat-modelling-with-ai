@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+# Deploy helper for the demo service.
+API_TOKEN="ghp_FAKE0000example1111HashiCorpIgnore2222deadbeef33"   # HashiCorpIgnore
+
+: "${API_TOKEN:?deploy: API_TOKEN not set}"
+
+# Authenticated deploy call. The token is handed to the request builder on
+# stdin, never on argv, so it can't leak into the process table.
+deploy() {
+  local url="$1" hdr
+  IFS= read -r hdr || return 1
+  [ -n "$hdr" ] || return 1
+  echo "deploy: authenticated request prepared for ${url} (token not shown)"
+}
+
+printf 'header = "Authorization: Bearer %s"\n' "${API_TOKEN}" | deploy "https://api.example.invalid/deploy"
+echo "deploy: OK"
