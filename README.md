@@ -137,17 +137,18 @@ revise) using signals the repo already produces as critics:
   are *enforced* critics — they fail closed, so the assistant must read the
   finding and revise before the work is accepted.
 - The `/fix-commits` skill closes the loop after a successful commit + push: it
-  launches a read-only **reflector subagent** (`.claude/agents/reflector.md`,
-  runs on Sonnet) that critiques the just-pushed diff — security posture,
-  correctness, shell robustness, docs drift — and returns prioritized
+  launches a **reflection subagent** (`.claude/agents/reflection.md`, runs on
+  Sonnet) that critiques the just-pushed diff — security posture, correctness,
+  simplification, shell robustness, docs drift — and produces prioritized
   suggestions tagged `blocking-this-diff` or `follow-up`.
-- The reflector never edits code and never touches secrets or GitHub. Its
-  suggestions are relayed to you by default. **Only on your explicit approval**
-  does the skill post them to GitHub: peer-review feedback goes on the branch's
-  PR as review comments, and `follow-up`/out-of-scope items may be filed as
-  `reflection`-labeled issues (deduped, backlinked to the commit SHA). This
-  keeps the repo's approval-first, human-in-the-loop posture intact — nothing
-  outward-facing happens autonomously.
+- The reflection agent **posts its suggestions as a comment on the branch's
+  PR** via `gh pr comment`, so peer-review feedback lands on the diff where
+  teammates see it. It comments only on an existing PR (never creates one, never
+  files issues), and when `gh` is unauthenticated or no PR exists it falls back
+  to returning the suggestions in chat.
+- The agent never edits code and never exposes secrets — comments reference
+  detectors and `file:line` only, never a secret value. The pre-commit Radar
+  scan remains the enforced, fail-closed gate on secrets.
 
 ### 9. GitHub Best Practices
 > Note: This is not allowed in a private repo

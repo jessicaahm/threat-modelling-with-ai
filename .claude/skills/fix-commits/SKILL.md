@@ -1,6 +1,6 @@
 ---
 name: fix-commits
-description: Pre-commit readiness check — ensures the Vault Radar license file exists in .devcontainer, fetching it from Vault (namespace admin, mount tmai, secret radar) if missing without ever exposing the secret to AI context; then ensures the work lands on a feature branch (creating featureNN-<slug> when on main/master), commits and pushes once the user approves, and finishes with a read-only reflector subagent that suggests improvements to the committed code.
+description: Pre-commit readiness check — ensures the Vault Radar license file exists in .devcontainer, fetching it from Vault (namespace admin, mount tmai, secret radar) if missing without ever exposing the secret to AI context; then ensures the work lands on a feature branch (creating featureNN-<slug> when on main/master), commits and pushes once the user approves, and finishes with a reflection subagent that reviews the committed code and posts its suggestions as PR comments.
 ---
 
 # Fix commits
@@ -128,53 +128,24 @@ Only reached after a successful commit **and** push in step 4. Skip this step
 entirely when the tree was clean, the user declined the commit, or the Radar
 hook blocked it.
 
-Launch the `reflector` subagent (defined in `.claude/agents/reflector.md`,
-runs on Sonnet, read-only) via the Agent tool with `subagent_type: reflector`.
-In the prompt, give it the current branch name and tell it to review the work
-just pushed (`git diff main...HEAD`, falling back to `git show HEAD` if `main`
-is unavailable) and return prioritized improvement suggestions.
+Launch the `reflection` subagent (defined in `.claude/agents/reflection.md`,
+runs on Sonnet) via the Agent tool with `subagent_type: reflection`. In the
+prompt, give it the current branch name and tell it to review the work just
+pushed (`git diff main...HEAD`, falling back to `git show HEAD` if `main` is
+unavailable) and post its prioritized improvement suggestions.
 
-When it finishes, relay its suggestions to the user as a short prioritized
-list. Each suggestion is tagged `[blocking-this-diff]` or `[follow-up]` — keep
-those tags when relaying, and preserve them for step 6. Do **not** apply any of
-them automatically — if the user wants one applied, that is a new edit followed
-by another `/fix-commits` run, which closes the reflection loop. The reflector
-never blocks or undoes the push that already happened.
+The agent posts its own findings **as a comment on the branch's PR** via
+`gh pr comment` — it handles the `gh auth status` preflight, finds the PR, and
+falls back to returning the suggestions in its message when the CLI is
+unauthenticated or no PR exists. The agent never edits code, never creates a PR,
+and never files issues; its only state-changing action is the PR comment.
 
-### 6. Optionally post the reflection to GitHub
-
-The reflector is read-only and never touches GitHub. **You** (the skill) do any
-posting, and only after the user explicitly approves this run — same gate as the
-commit in step 4. The default is relay-only: if the user does not choose to
-post, stop here and nothing goes to GitHub.
-
-After relaying, use **AskUserQuestion** to offer:
-
-- **Relay only** (default) — do nothing further.
-- **Post to the PR** — post the suggestions as review comments on the branch's
-  PR (peer-review feedback belongs on the diff, not in the issue tracker).
-- **File follow-up issues** — only for the `[follow-up]`-tagged items.
-
-Preflight before any write: run `gh auth status`. If it is not authenticated or
-lacks write scope, skip posting, tell the user, and keep the relayed list — this
-never blocks or errors out.
-
-**Post to the PR.** Find the branch's PR with `gh pr view --json number,url`
-(or `gh pr list --head <branch>`). If a PR exists, post the suggestions with
-`gh pr comment <number> --body ...` (prefer line-anchored `gh pr review
---comment` where a specific hunk applies). If **no** PR exists, tell the user to
-open one first and stop — do **not** fall back to filing issues for diff-level
-feedback.
-
-**File follow-up issues** (only the `[follow-up]` items). Ensure the label
-exists (`gh label create reflection --force` or create-if-missing). Before
-filing, dedup against open reflection issues:
-`gh issue list --label reflection --search "<file:line or key phrase>"` — skip
-anything already tracked. Then `gh issue create --label reflection --title ...
---body ...`, and include the commit SHA and branch as a backlink in each body so
-the issue traces to the diff that prompted it.
-
-Never post autonomously. Approval covers only this run — re-ask on the next one.
+When it finishes, relay its suggestions (and whether they were posted to the PR
+or skipped) to the user as a short prioritized list. Each suggestion is tagged
+`[blocking-this-diff]` or `[follow-up]` — keep those tags when relaying. Do
+**not** apply any of them automatically — if the user wants one applied, that is
+a new edit followed by another `/fix-commits` run, which closes the reflection
+loop. The reflection pass never blocks or undoes the push that already happened.
 
 ## Hard rules
 
@@ -193,7 +164,7 @@ Never post autonomously. Approval covers only this run — re-ask on the next on
 - NEVER stage `.devcontainer/.vault-radar-license`. It is gitignored; keep it
   that way and stage explicit paths rather than reaching for `git add -A` when
   the tree is dirty in ways you have not looked at.
-- NEVER post reflector feedback to GitHub (PR comments or issues) without the
-  user's explicit approval from step 6. The reflector itself is read-only and
-  must never write to GitHub; only the skill posts, and only for the run the
-  user approved.
+- The reflection agent (step 5) posts feedback only as a comment on an existing
+  PR, and only when `gh` is authenticated. It must never create a PR, file
+  issues, edit code, or include a secret value in a comment — detectors and
+  `file:line` only.

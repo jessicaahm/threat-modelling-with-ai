@@ -69,6 +69,9 @@ ENV SHELL=/bin/zsh
 
 RUN pipx install pre-commit
 
+# uv: fast Python package/project manager, installed to ~/.local/bin (already on PATH).
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # Scanner toolchain for the vulnerability-checker agent (agent/vuln_agent):
 # Semgrep for SAST, Trivy for dependency/SCA scanning. Trivy ships as a
 # GitHub release binary (no apt repo pinning needed); version pinned so the
