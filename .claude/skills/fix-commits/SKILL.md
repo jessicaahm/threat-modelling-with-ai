@@ -147,6 +147,42 @@ or skipped) to the user as a short prioritized list. Each suggestion is tagged
 a new edit followed by another `/fix-commits` run, which closes the reflection
 loop. The reflection pass never blocks or undoes the push that already happened.
 
+If the current commit already had a reflection on the PR, the agent returns
+those existing findings (marked *reused*) instead of posting a duplicate — feed
+them into step 6 exactly like fresh ones.
+
+### 6. Optionally remediate the findings
+
+Only offered after step 5 produced findings. This step **edits code** and is
+opt-in — use **AskUserQuestion** to ask whether to apply fixes, and which scope:
+all findings, only the `[blocking-this-diff]` ones, or none. Do not run it
+automatically.
+
+On approval, take the reflection agent's structured output and **split it into
+individual findings** — one item per tagged suggestion (tag, one-sentence
+suggestion, `file:line`, why). For each finding, launch a separate `remediation`
+subagent (defined in `.claude/agents/remediation.md`, runs on Sonnet) via the
+Agent tool with `subagent_type: remediation`, passing that **one** finding in the
+prompt in the structured form:
+
+```
+tag: [blocking-this-diff]
+suggestion: <the one-sentence suggestion>
+location: <file:line>
+why: <the brief rationale>
+```
+
+Launch one subagent per finding — each fixes exactly its assigned issue and
+nothing else. They may run in parallel since each edits an independent finding;
+if two findings touch the same file, run those sequentially to avoid conflicting
+edits. The remediation agents edit code only — they never commit, push, or touch
+secrets.
+
+When they finish, aggregate their one-line reports and show the user which
+findings were fixed, skipped, or judged false positives. The edits are now in the
+working tree, uncommitted — tell the user to re-run `/fix-commits` to scan and
+commit them, which closes the loop.
+
 ## Hard rules
 
 - NEVER read, cat, echo, or otherwise display the license file or its
@@ -168,3 +204,7 @@ loop. The reflection pass never blocks or undoes the push that already happened.
   PR, and only when `gh` is authenticated. It must never create a PR, file
   issues, edit code, or include a secret value in a comment — detectors and
   `file:line` only.
+- The remediation agents (step 6) are opt-in and each fix exactly one reflection
+  finding. They edit source files only — they never commit, stage, push, bypass
+  the Radar hook, touch secrets, or read the license/`tmai` mount. Their edits
+  land uncommitted; committing them is a fresh `/fix-commits` run.
