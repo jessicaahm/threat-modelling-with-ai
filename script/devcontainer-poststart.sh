@@ -45,6 +45,30 @@ fi
 
 echo "OK: logged in to Vault via userpass at ${VAULT_ADDR} (namespace ${VAULT_NAMESPACE})."
 
+# --- GitHub CLI auth -------------------------------------------------------
+# Non-interactively authenticate `gh` (and git) using a PAT stored alongside
+# the HCP creds in Vault (field GH_TOKEN of tmai/radar). Optional: if the
+# field is absent/empty, we skip without failing the rest of startup.
+# SECURITY: token is piped via stdin to `gh auth login --with-token`, so it
+# never appears in argv/process listing/logs. Value is never printed.
+if command -v gh >/dev/null 2>&1; then
+  gh_token=$(vault kv get -mount="${KV_MOUNT}" -field=GH_TOKEN "${SECRET_NAME}" 2>/dev/null) || gh_token=""
+  if [ -n "${gh_token}" ]; then
+    if printf '%s' "${gh_token}" | gh auth login --with-token >/dev/null 2>&1; then
+      gh auth setup-git >/dev/null 2>&1 || true
+      echo "OK: gh authenticated via Vault token (value not shown)."
+    else
+      echo "ERROR: gh auth login failed -- check the GH_TOKEN field in ${KV_MOUNT}/${SECRET_NAME}." >&2
+    fi
+  else
+    echo "INFO: no GH_TOKEN in ${KV_MOUNT}/${SECRET_NAME} -- skipping gh auth."
+  fi
+  unset gh_token
+else
+  echo "INFO: 'gh' CLI not found on PATH -- skipping gh auth."
+fi
+# ---------------------------------------------------------------------------
+
 umask 077
 tmp_file="$(mktemp)"
 status=0
