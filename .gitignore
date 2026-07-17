@@ -1,2 +1,6 @@
 # Vault Radar license — fetched manually from Vault, never committed.
 .devcontainer/.vault-radar-license
+# OpenAI API key for the vuln-agent triage layer — fetched from Vault
+# (script/fetch-openai-key.sh), never committed.
+.devcontainer/.openai-api-key
+__pycache__/

@@ -1,0 +1,104 @@
+# DevSecOps checks: SAST (Semgrep), SCA (Trivy).
+#
+# Secret scanning is handled by the Vault Radar GitHub App integration,
+# not this workflow.
+#
+# These re-run in CI what the pre-commit hook runs locally, because
+# pre-commit is bypassable with `git commit --no-verify`. Add both
+# jobs as required status checks on main -- without that, this pipeline
+# reports but does not gate.
+#
+# Tool versions are pinned to the same ones .devcontainer/Dockerfile
+# installs, so a local run and a CI run agree.
+
+name: DevSecOps
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege: read the code, nothing else. No SARIF upload, so no
+# security-events write is needed.
+permissions:
+  contents: read
+
+env:
+  SEMGREP_VERSION: 1.170.0
+  TRIVY_VERSION: 0.72.0
+
+# A newer push supersedes an in-flight run for the same PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --- 1. SAST ---------------------------------------------------------
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Semgrep
+        run: pipx install "semgrep==${SEMGREP_VERSION}"
+
+      - name: Run Semgrep
+        id: semgrep
+        run: |
+          # Explicit rulesets rather than --config=auto, which resolves
+          # against the registry at run time and is non-deterministic.
+          # --error turns findings into a non-zero exit.
+          semgrep scan \
+            --config=p/security-audit \
+            --config=p/dockerfile \
+            --error \
+            --metrics=off
+
+      - name: Summarize
+        if: always()
+        run: |
+          echo "### SAST (Semgrep ${SEMGREP_VERSION})" >> "${GITHUB_STEP_SUMMARY}"
+          if [ "${{ steps.semgrep.outcome }}" = "success" ]; then
+            echo "No findings." >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "Findings reported — see the job log for file, line, and rule." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+  # --- 2. SCA / supply chain -------------------------------------------
+  sca:
+    name: SCA (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Trivy
+        run: |
+          # Same pinned release tarball the Dockerfile uses. Runners are amd64.
+          curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin trivy
+          trivy --version
+
+      - name: Scan dependencies for vulnerabilities
+        run: |
+          # No dependency manifests exist yet -- this reports nothing today
+          # and starts working the moment the agent's manifests land.
+          echo "### SCA (Trivy ${TRIVY_VERSION})" >> "${GITHUB_STEP_SUMMARY}"
+          trivy fs \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --no-progress \
+            .
+
+      - name: Scan config for misconfiguration
+        run: |
+          # Scans .devcontainer/Dockerfile and any IaC.
+          # No --no-progress here: unlike `trivy fs`, `trivy config` does not
+          # accept that flag (verified against 0.72.0).
+          trivy config \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            .
