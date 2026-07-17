@@ -161,35 +161,42 @@ automatically.
 On approval, take the reflection agent's structured output and **split it into
 individual findings** — one item per tagged suggestion (tag, one-sentence
 suggestion, `file:line`, why). Then run each finding through a **plan → approve →
-apply** cycle so the user sees and approves every change before it touches a file:
+apply** cycle so the user sees and approves every change before it touches a file.
+The plan and the write are done by **two different agents**: the `remediation`
+planner has **no edit tools** (read-only is structural, not a promise), and the
+separate `apply-fix` writer performs the edit only after approval.
 
 **6a. Plan.** For each in-scope finding, launch a `remediation` subagent
 (defined in `.claude/agents/remediation.md`, runs on Sonnet) via the Agent tool
-with `subagent_type: remediation`, passing that **one** finding with `mode: plan`:
+with `subagent_type: remediation`, passing that **one** finding:
 
 ```
-mode: plan
 tag: [blocking-this-diff]
 suggestion: <the one-sentence suggestion>
 location: <file:line>
 why: <the brief rationale>
 ```
 
-In `plan` mode the agent makes **no edits** — it returns a proposal: the file(s)
-it would change, the ordered steps of the edit, and why. Plan passes are
-read-only and independent, so they may run in parallel.
+The `remediation` planner has no Edit/Write tools, so it **cannot** modify the
+tree — it returns a proposal only: the file(s) it would change, the ordered steps
+of the edit, and why. Because the planner is read-only by construction (not just
+by instruction), plan passes cannot race and may all run in parallel — unlike the
+apply passes in 6c, which must serialize edits that touch the same file.
 
-**6b. Approve — per finding.** Relay each returned plan to the user and use
-**AskUserQuestion** to approve **that individual fix** before it is applied,
-showing its file changed, steps, and why. Ask once per finding (approve / skip);
-never apply a plan the user has not approved.
+**6b. Approve — batched, still per finding.** Relay the returned plans to the
+user and gather approvals with **AskUserQuestion**, but *batch* them: put one
+question per finding (each showing its file changed, steps, and why, with
+approve / skip options) into a single AskUserQuestion call, using as few calls as
+the tool's per-call question limit allows instead of one call per finding. Every
+finding still gets its own approve/skip gate, and the answers map back
+one-to-one to individual plans; never apply a plan the user has not approved.
 
-**6c. Apply.** For each approved plan, launch a fresh `remediation` subagent with
-`subagent_type: remediation` and `mode: apply`, passing the same finding **plus
-the approved plan text** so the agent applies exactly what was approved:
+**6c. Apply.** For each approved plan, launch an `apply-fix` subagent (defined in
+`.claude/agents/apply-fix.md`, runs on Sonnet) via the Agent tool with
+`subagent_type: apply-fix`, passing the same finding **plus the approved plan
+text** so the writer applies exactly what was approved:
 
 ```
-mode: apply
 tag: [blocking-this-diff]
 suggestion: <the one-sentence suggestion>
 location: <file:line>
@@ -197,11 +204,11 @@ why: <the brief rationale>
 approved plan: <the plan text the user approved in 6b>
 ```
 
-Apply one subagent per approved finding — each fixes exactly its assigned issue
-and nothing else. They may run in parallel since each edits an independent
-finding; if two findings touch the same file, run those sequentially to avoid
-conflicting edits. The remediation agents edit code only — they never commit,
-push, or touch secrets.
+Launch one `apply-fix` subagent per approved finding — each applies exactly its
+assigned plan and nothing else. They may run in parallel since each edits an
+independent finding; if two findings touch the same file, run those sequentially
+to avoid conflicting edits. The `apply-fix` agents edit code only — they never
+commit, push, or touch secrets.
 
 When they finish, aggregate their one-line reports and show the user which
 findings were applied, skipped (declined at 6b), or judged false positives. The
@@ -229,7 +236,10 @@ edits are now in the working tree, uncommitted — tell the user to re-run
   PR, and only when `gh` is authenticated. It must never create a PR, file
   issues, edit code, or include a secret value in a comment — detectors and
   `file:line` only.
-- The remediation agents (step 6) are opt-in and each fix exactly one reflection
-  finding. They edit source files only — they never commit, stage, push, bypass
-  the Radar hook, touch secrets, or read the license/`tmai` mount. Their edits
-  land uncommitted; committing them is a fresh `/fix-commits` run.
+- The step 6 remediation flow is opt-in and splits into two agents, each scoped
+  to exactly one reflection finding: the `remediation` planner is **read-only**
+  (no Edit/Write tools — it only proposes a plan), and the `apply-fix` writer
+  edits source files only after the user approves that plan. Neither commits,
+  stages, pushes, bypasses the Radar hook, touches secrets, or reads the
+  license/`tmai` mount. The applied edits land uncommitted; committing them is a
+  fresh `/fix-commits` run.

@@ -24,6 +24,17 @@
             "statusMessage": "Recording plan approval..."
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); f=$(printf \"%s\" \"$input\" | jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.sh) if ! err=$(bash -n \"$f\" 2>&1); then jq -n --arg r \"bash -n syntax error in $f:\n$err\" '{decision:\"block\",reason:$r}'; fi;; esac",
+            "timeout": 15,
+            "statusMessage": "Checking shell syntax..."
+          }
+        ]
       }
     ],
     "PreToolUse": [
