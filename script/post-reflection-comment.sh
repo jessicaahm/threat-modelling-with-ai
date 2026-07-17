@@ -35,7 +35,7 @@ case "${EXPECTED_HEAD}" in
 esac
 EXPECTED_HEAD="$(printf '%s' "${EXPECTED_HEAD}" | tr '[:upper:]' '[:lower:]')"
 
-for cmd in git gh jq mktemp wc head dd; do
+for cmd in git gh jq mktemp wc head; do
   command -v "${cmd}" >/dev/null 2>&1 || {
     echo "ERROR: '${cmd}' is required." >&2
     exit 1
@@ -77,7 +77,7 @@ fi
 umask 077
 BODY_FILE="$(mktemp)"
 trap 'rm -f "${BODY_FILE}"' EXIT
-dd bs=65537 count=1 of="${BODY_FILE}" status=none
+head -c 65537 > "${BODY_FILE}"
 BODY_SIZE="$(wc -c < "${BODY_FILE}")"
 if [ "${BODY_SIZE}" -eq 0 ]; then
   echo "BLOCKED: reflection comment is empty." >&2
