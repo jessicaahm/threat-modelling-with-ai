@@ -1,6 +1,6 @@
 ---
 name: fix-commits
-description: Pre-commit readiness check — ensures the Vault Radar license file exists in .devcontainer, fetching it from Vault (namespace admin, mount tmai, secret radar) if missing without ever exposing the secret to AI context; then ensures the work lands on a feature branch (creating featureNN-<slug> when on main/master) and commits and pushes once the user approves.
+description: Pre-commit readiness check — ensures the Vault Radar license file exists in .devcontainer, fetching it from Vault (namespace admin, mount tmai, secret radar) if missing without ever exposing the secret to AI context; then ensures the work lands on a feature branch (creating featureNN-<slug> when on main/master), commits and pushes once the user approves, and finishes with a read-only reflector subagent that suggests improvements to the committed code.
 ---
 
 # Fix commits
@@ -122,6 +122,60 @@ If the Radar hook blocks the commit, relay its output verbatim, do not push, and
 stop. The scan found something — that is the hook working, not a problem to route
 around.
 
+### 5. Reflect on the committed code
+
+Only reached after a successful commit **and** push in step 4. Skip this step
+entirely when the tree was clean, the user declined the commit, or the Radar
+hook blocked it.
+
+Launch the `reflector` subagent (defined in `.claude/agents/reflector.md`,
+runs on Sonnet, read-only) via the Agent tool with `subagent_type: reflector`.
+In the prompt, give it the current branch name and tell it to review the work
+just pushed (`git diff main...HEAD`, falling back to `git show HEAD` if `main`
+is unavailable) and return prioritized improvement suggestions.
+
+When it finishes, relay its suggestions to the user as a short prioritized
+list. Each suggestion is tagged `[blocking-this-diff]` or `[follow-up]` — keep
+those tags when relaying, and preserve them for step 6. Do **not** apply any of
+them automatically — if the user wants one applied, that is a new edit followed
+by another `/fix-commits` run, which closes the reflection loop. The reflector
+never blocks or undoes the push that already happened.
+
+### 6. Optionally post the reflection to GitHub
+
+The reflector is read-only and never touches GitHub. **You** (the skill) do any
+posting, and only after the user explicitly approves this run — same gate as the
+commit in step 4. The default is relay-only: if the user does not choose to
+post, stop here and nothing goes to GitHub.
+
+After relaying, use **AskUserQuestion** to offer:
+
+- **Relay only** (default) — do nothing further.
+- **Post to the PR** — post the suggestions as review comments on the branch's
+  PR (peer-review feedback belongs on the diff, not in the issue tracker).
+- **File follow-up issues** — only for the `[follow-up]`-tagged items.
+
+Preflight before any write: run `gh auth status`. If it is not authenticated or
+lacks write scope, skip posting, tell the user, and keep the relayed list — this
+never blocks or errors out.
+
+**Post to the PR.** Find the branch's PR with `gh pr view --json number,url`
+(or `gh pr list --head <branch>`). If a PR exists, post the suggestions with
+`gh pr comment <number> --body ...` (prefer line-anchored `gh pr review
+--comment` where a specific hunk applies). If **no** PR exists, tell the user to
+open one first and stop — do **not** fall back to filing issues for diff-level
+feedback.
+
+**File follow-up issues** (only the `[follow-up]` items). Ensure the label
+exists (`gh label create reflection --force` or create-if-missing). Before
+filing, dedup against open reflection issues:
+`gh issue list --label reflection --search "<file:line or key phrase>"` — skip
+anything already tracked. Then `gh issue create --label reflection --title ...
+--body ...`, and include the commit SHA and branch as a backlink in each body so
+the issue traces to the diff that prompted it.
+
+Never post autonomously. Approval covers only this run — re-ask on the next one.
+
 ## Hard rules
 
 - NEVER read, cat, echo, or otherwise display the license file or its
@@ -139,3 +193,7 @@ around.
 - NEVER stage `.devcontainer/.vault-radar-license`. It is gitignored; keep it
   that way and stage explicit paths rather than reaching for `git add -A` when
   the tree is dirty in ways you have not looked at.
+- NEVER post reflector feedback to GitHub (PR comments or issues) without the
+  user's explicit approval from step 6. The reflector itself is read-only and
+  must never write to GitHub; only the skill posts, and only for the run the
+  user approved.

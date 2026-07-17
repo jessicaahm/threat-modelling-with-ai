@@ -128,6 +128,27 @@ This repo's own dev workflow uses an AI coding assistant (Claude Code, `.claude/
 - [ ] AI-authored commits/PRs are attributable (co-author tag or similar) so changes are auditable after the fact
 - [ ] Prompt/session transcripts retained or logged where feasible, for post-incident review of *why* an AI-driven change was made
 
+### 8a. Reflection in the developer workflow
+
+The workflow applies the **reflection** agentic pattern (generate → critique →
+revise) using signals the repo already produces as critics:
+
+- The **pre-commit Radar scan** and **CI SAST/SCA** (`.github/workflows/devsecops.yml`)
+  are *enforced* critics — they fail closed, so the assistant must read the
+  finding and revise before the work is accepted.
+- The `/fix-commits` skill closes the loop after a successful commit + push: it
+  launches a read-only **reflector subagent** (`.claude/agents/reflector.md`,
+  runs on Sonnet) that critiques the just-pushed diff — security posture,
+  correctness, shell robustness, docs drift — and returns prioritized
+  suggestions tagged `blocking-this-diff` or `follow-up`.
+- The reflector never edits code and never touches secrets or GitHub. Its
+  suggestions are relayed to you by default. **Only on your explicit approval**
+  does the skill post them to GitHub: peer-review feedback goes on the branch's
+  PR as review comments, and `follow-up`/out-of-scope items may be filed as
+  `reflection`-labeled issues (deduped, backlinked to the commit SHA). This
+  keeps the repo's approval-first, human-in-the-loop posture intact — nothing
+  outward-facing happens autonomously.
+
 ### 9. GitHub Best Practices
 > Note: This is not allowed in a private repo
 - [x] Add a branch protection rule on `main` (require PR review before merge, no direct pushes)
