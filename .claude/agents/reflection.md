@@ -34,12 +34,17 @@ them straight to remediation.
 
    ```bash
    gh pr view <number> --json comments \
-     --jq '.comments[] | select(.body | startswith("Reflection on ")) | .body'
+     --jq '.comments[] | select(.body | startswith("Reflection on ")) | {url, body}'
    ```
 
 4. Decide reuse vs. re-review:
-   - A reflection comment whose header SHA **matches the current `HEAD`** is a
-     match — the diff has not changed since it was written. **Reuse it.**
+   - The header SHA is a **short SHA** (e.g. `Reflection on 8312f05 ...`), while
+     `git rev-parse HEAD` returns the full 40-char SHA, so compare by prefix
+     rather than strict equality: a comment matches when the full `HEAD` SHA
+     **starts with** the comment's header SHA (equivalently, normalize both with
+     `git rev-parse --short=<len>` before comparing). A reflection comment whose
+     header SHA matches the current `HEAD` this way is a match — the diff has not
+     changed since it was written. **Reuse it.**
    - If the only reflection comments are for older SHAs (the code has moved on),
      do **not** reuse them — they describe a stale diff. Fall through to a normal
      review and post a fresh reflection for the current SHA.

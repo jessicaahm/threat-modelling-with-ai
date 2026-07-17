@@ -154,34 +154,59 @@ them into step 6 exactly like fresh ones.
 ### 6. Optionally remediate the findings
 
 Only offered after step 5 produced findings. This step **edits code** and is
-opt-in — use **AskUserQuestion** to ask whether to apply fixes, and which scope:
-all findings, only the `[blocking-this-diff]` ones, or none. Do not run it
+opt-in — use **AskUserQuestion** to ask whether to remediate at all, and which
+scope: all findings, only the `[blocking-this-diff]` ones, or none. Do not run it
 automatically.
 
 On approval, take the reflection agent's structured output and **split it into
 individual findings** — one item per tagged suggestion (tag, one-sentence
-suggestion, `file:line`, why). For each finding, launch a separate `remediation`
-subagent (defined in `.claude/agents/remediation.md`, runs on Sonnet) via the
-Agent tool with `subagent_type: remediation`, passing that **one** finding in the
-prompt in the structured form:
+suggestion, `file:line`, why). Then run each finding through a **plan → approve →
+apply** cycle so the user sees and approves every change before it touches a file:
+
+**6a. Plan.** For each in-scope finding, launch a `remediation` subagent
+(defined in `.claude/agents/remediation.md`, runs on Sonnet) via the Agent tool
+with `subagent_type: remediation`, passing that **one** finding with `mode: plan`:
 
 ```
+mode: plan
 tag: [blocking-this-diff]
 suggestion: <the one-sentence suggestion>
 location: <file:line>
 why: <the brief rationale>
 ```
 
-Launch one subagent per finding — each fixes exactly its assigned issue and
-nothing else. They may run in parallel since each edits an independent finding;
-if two findings touch the same file, run those sequentially to avoid conflicting
-edits. The remediation agents edit code only — they never commit, push, or touch
-secrets.
+In `plan` mode the agent makes **no edits** — it returns a proposal: the file(s)
+it would change, the ordered steps of the edit, and why. Plan passes are
+read-only and independent, so they may run in parallel.
+
+**6b. Approve — per finding.** Relay each returned plan to the user and use
+**AskUserQuestion** to approve **that individual fix** before it is applied,
+showing its file changed, steps, and why. Ask once per finding (approve / skip);
+never apply a plan the user has not approved.
+
+**6c. Apply.** For each approved plan, launch a fresh `remediation` subagent with
+`subagent_type: remediation` and `mode: apply`, passing the same finding **plus
+the approved plan text** so the agent applies exactly what was approved:
+
+```
+mode: apply
+tag: [blocking-this-diff]
+suggestion: <the one-sentence suggestion>
+location: <file:line>
+why: <the brief rationale>
+approved plan: <the plan text the user approved in 6b>
+```
+
+Apply one subagent per approved finding — each fixes exactly its assigned issue
+and nothing else. They may run in parallel since each edits an independent
+finding; if two findings touch the same file, run those sequentially to avoid
+conflicting edits. The remediation agents edit code only — they never commit,
+push, or touch secrets.
 
 When they finish, aggregate their one-line reports and show the user which
-findings were fixed, skipped, or judged false positives. The edits are now in the
-working tree, uncommitted — tell the user to re-run `/fix-commits` to scan and
-commit them, which closes the loop.
+findings were applied, skipped (declined at 6b), or judged false positives. The
+edits are now in the working tree, uncommitted — tell the user to re-run
+`/fix-commits` to scan and commit them, which closes the loop.
 
 ## Hard rules
 
