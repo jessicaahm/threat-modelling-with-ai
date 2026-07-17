@@ -148,17 +148,27 @@ has never seen. Each has: `plan.md` (the approved plan — authoritative), `star
 | `quote-guard` | Apply a small approved fix (quote a shell variable) | Makes the exact one-line change and **stays in scope** (no over-editing). |
 | `noop-bail` | The plan is stale — the fix is already there | Makes **no edit** and reports a bail, instead of blindly acting on a stale instruction. |
 
-Each captured edit is produced by calling the model **live once**, then frozen;
-re-runs replay it (free, deterministic) and recompute cost from token counts ×
-`eval/model-pricing.json`.
+Each captured edit is produced by calling the model **live once** with
+`eval/capture-apply-fix.sh <fixture_dir> [alias…]`, then frozen; re-runs replay
+it (free, deterministic) and recompute cost from token counts ×
+`eval/model-pricing.json`. Every real capture carries a `provenance` marker
+(`{tool, captured_at, model_id, live:true}`) and true `usage`; the harness's
+**fail-closed provenance gate** (§3) fails any candidate transcript that lacks
+`provenance.live == true` or real token usage, so a hand-authored placeholder
+counts as a FAIL instead of masquerading as evidence. Regenerate a real transcript
+with `capture-apply-fix.sh` (needs `ANTHROPIC_API_KEY` or an `ant auth` profile);
+refresh its judge field with `eval/judge/run-judge.sh`, which stamps its own
+liveness provenance.
 
 ### Add a fixture
 
 Create `fixtures/apply-fix/<new-archetype>/` with `start/`, `golden/`, `plan.md`,
 `probe.sh`, `meta.json`, and one `captured/<model>.json` per ladder model (+ an
-optional `captured/_bad.json`). Cover a new *edit shape*, not another instance of
-one you already have. The harness auto-discovers it and adds it to every section
-and the scorecard.
+optional `captured/_bad.json`). Generate the `captured/<model>.json` transcripts
+with `eval/capture-apply-fix.sh` rather than hand-writing them — the provenance
+gate rejects captures without a live marker. Cover a new *edit shape*, not another
+instance of one you already have. The harness auto-discovers it and adds it to
+every section and the scorecard.
 
 ---
 
@@ -167,6 +177,7 @@ and the scorecard.
 | Path | Role |
 |---|---|
 | `eval/eval-apply-fix.sh` | The deterministic harness (§1). |
+| `eval/capture-apply-fix.sh` | Live producer: generates `captured/<model>.json` transcripts with provenance. |
 | `eval/judge/run-judge.sh` | The LLM-as-a-judge runner (§2). |
 | `eval/judge/apply-fix-rubric.md` | The judge's scoring rubric. |
 | `eval/seed-eval-vault.sh` | One-time FAKE-secret upload to Vault (`--seed-vault`). |

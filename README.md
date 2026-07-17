@@ -133,23 +133,23 @@ This repo's own dev workflow uses an AI coding assistant (Claude Code, `.claude/
 The workflow applies the **reflection** agentic pattern (generate → critique →
 revise) using signals the repo already produces as critics:
 
-- The **pre-commit Radar scan** and **CI SAST/SCA** (`.github/workflows/devsecops.yml`)
-  are *enforced* critics — they fail closed, so the assistant must read the
-  finding and revise before the work is accepted.
-- The `/fix-commits` skill closes the loop after a successful commit + push: it
-  launches a **reflection subagent** (`.claude/agents/reflection.md`, runs on
-  Sonnet) that critiques the just-pushed diff — security posture, correctness,
-  simplification, shell robustness, docs drift — and produces prioritized
-  suggestions tagged `blocking-this-diff` or `follow-up`.
-- The reflection agent **posts its suggestions as a comment on the branch's
-  PR** via `gh pr comment`, so peer-review feedback lands on the diff where
-  teammates see it. It comments only on an existing PR (never creates one, never
-  files issues), and when `gh` is unauthenticated or no PR exists it falls back
-  to returning the suggestions in chat.
-- The agent never edits code and never exposes secrets — comments reference
-  detectors and `file:line` only, never a secret value. The pre-commit Radar
-  scan remains the enforced, fail-closed gate on secrets.
-
+- The **pre-commit Radar scan** and **CI SAST/SCA**
+  (`.github/workflows/devsecops.yml`) are enforced critics.
+- After a successful commit and push, the `/fix-commits` orchestrator collects
+  the branch, exact HEAD, committed diff, PR identity, and any reusable
+  reflection for that SHA.
+- The `reflection` subagent is structurally read-only: it has only
+  Read/Grep/Glob. It reviews the supplied context and returns tagged findings
+  plus literal proposed PR-comment text; it cannot run Git or `gh`, edit files,
+  access credentials, or post externally.
+- A fresh comment is shown to the user for separate approval. Only then may the
+  orchestrator invoke `script/post-reflection-comment.sh`, which fails closed
+  unless the repository, open PR, local HEAD, PR head, and comment header still
+  match the reviewed context.
+- Reused comments are never posted again. If approval, authentication, or PR
+  validation fails, the findings remain visible in chat and GitHub is unchanged.
+- Findings and comments reference detector names and `file:line` only, never
+  secret values.
 ### 9. GitHub Best Practices
 > Note: This is not allowed in a private repo
 - [x] Add a branch protection rule on `main` (require PR review before merge, no direct pushes)

@@ -4,6 +4,10 @@
   },
   "permissions": {
     "defaultMode": "plan",
+    "ask": [
+      "Bash(script/post-reflection-comment.sh *)",
+      "Bash(./script/post-reflection-comment.sh *)"
+    ],
     "deny": [
       "Read(.devcontainer/.vault-radar-license)",
       "Read(//workspace/.devcontainer/.vault-radar-license)",

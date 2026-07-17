@@ -125,32 +125,50 @@ around.
 ### 5. Reflect on the committed code
 
 Only reached after a successful commit **and** push in step 4. Skip this step
-entirely when the tree was clean, the user declined the commit, or the Radar
-hook blocked it.
+when the tree was clean, the user declined, or the Radar hook blocked the commit.
 
-Launch the `reflection` subagent (defined in `.claude/agents/reflection.md`,
-runs on Sonnet) via the Agent tool with `subagent_type: reflection`. In the
-prompt, give it the current branch name and tell it to review the work just
-pushed (`git diff main...HEAD`, falling back to `git show HEAD` if `main` is
-unavailable) and post its prioritized improvement suggestions.
+The orchestrator, not the reflection agent, collects the review context:
 
-The agent posts its own findings **as a comment on the branch's PR** via
-`gh pr comment` — it handles the `gh auth status` preflight, finds the PR, and
-falls back to returning the suggestions in its message when the CLI is
-unauthenticated or no PR exists. The agent never edits code, never creates a PR,
-and never files issues; its only state-changing action is the PR comment.
+```bash
+branch=$(git rev-parse --abbrev-ref HEAD)
+head_sha=$(git rev-parse HEAD)
+repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
+git diff main...HEAD             # fall back to: git show HEAD
+gh pr view --json number,url,headRefOid,headRefName
+gh pr view <number> --json comments
+```
 
-When it finishes, relay its suggestions (and whether they were posted to the PR
-or skipped) to the user as a short prioritized list. Each suggestion is tagged
-`[blocking-this-diff]` or `[follow-up]` — keep those tags when relaying. Do
-**not** apply any of them automatically — if the user wants one applied, that is
-a new edit followed by another `/fix-commits` run, which closes the reflection
-loop. The reflection pass never blocks or undoes the push that already happened.
+Treat GitHub authentication or a missing PR as a non-fatal reason to skip comment
+reuse/posting; the local diff review still runs. From the PR comments, select the
+newest body beginning with `Reflection on ` whose header SHA is a prefix of the
+full current HEAD. Pass that match as **existing reflection**, or `none`; never
+pass an older reflection as reusable context.
 
-If the current commit already had a reflection on the PR, the agent returns
-those existing findings (marked *reused*) instead of posting a duplicate — feed
-them into step 6 exactly like fresh ones.
+Launch the read-only `reflection` subagent with `subagent_type: reflection`.
+Supply the branch, full HEAD SHA, literal diff, PR number/URL (or `none`), and
+matching existing reflection body/URL (or `none`). The agent has only
+Read/Grep/Glob: it returns findings and, for a fresh review with a PR, literal
+proposed comment text. It cannot run Git, access credentials, edit files, or
+post externally.
 
+If a matching reflection was reused, do not post. Otherwise, when the agent
+returned a proposed comment, use **AskUserQuestion** to show the exact comment
+and ask whether to post it. Approval covers that comment, PR, and HEAD only.
+On approval, feed the literal body over stdin with a quoted heredoc:
+
+```bash
+script/post-reflection-comment.sh "$repo" "$pr_number" "$head_sha" <<'REFLECTION'
+<the exact approved proposed comment>
+REFLECTION
+```
+
+The helper fails closed unless the authenticated repository, open PR, local
+HEAD, PR head, comment header, and supplied SHA all match. If approval is
+declined or posting fails, leave GitHub unchanged and return the findings in
+chat. Never create a PR or issue as a fallback.
+
+Relay the findings as a short prioritized list, preserving each
+`[blocking-this-diff]` or `[follow-up]` tag. Do not apply them automatically.
 ### 6. Optionally remediate the findings
 
 Only offered after step 5 produced findings. This step **edits code** and is
@@ -207,8 +225,14 @@ approved plan: <the plan text the user approved in 6b>
 Launch one `apply-fix` subagent per approved finding — each applies exactly its
 assigned plan and nothing else. They may run in parallel since each edits an
 independent finding; if two findings touch the same file, run those sequentially
-to avoid conflicting edits. The `apply-fix` agents edit code only — they never
+to avoid conflicting edits. The `apply-fix` agents have Edit but no Bash/Write; they edit code only
+— they never
 commit, push, or touch secrets.
+
+After each writer returns, the orchestrator runs the cheap executable checks named
+in the approved plan (at minimum, `bash -n` for every changed shell script). If a
+check fails, report it and leave the edit uncommitted; never let the writer gain
+Bash merely to run verification.
 
 When they finish, aggregate their one-line reports and show the user which
 findings were applied, skipped (declined at 6b), or judged false positives. The
@@ -232,13 +256,14 @@ edits are now in the working tree, uncommitted — tell the user to re-run
 - NEVER stage `.devcontainer/.vault-radar-license`. It is gitignored; keep it
   that way and stage explicit paths rather than reaching for `git add -A` when
   the tree is dirty in ways you have not looked at.
-- The reflection agent (step 5) posts feedback only as a comment on an existing
+- The reflection agent (step 5) only proposes feedback. After separate approval,
+  the orchestrator posts it as a comment on an existing
   PR, and only when `gh` is authenticated. It must never create a PR, file
   issues, edit code, or include a secret value in a comment — detectors and
   `file:line` only.
 - The step 6 remediation flow is opt-in and splits into two agents, each scoped
   to exactly one reflection finding: the `remediation` planner is **read-only**
-  (no Edit/Write tools — it only proposes a plan), and the `apply-fix` writer
+  (only Read/Grep/Glob — it only proposes a plan), and the `apply-fix` writer
   edits source files only after the user approves that plan. Neither commits,
   stages, pushes, bypasses the Radar hook, touches secrets, or reads the
   license/`tmai` mount. The applied edits land uncommitted; committing them is a

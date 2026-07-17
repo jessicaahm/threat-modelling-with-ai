@@ -20,11 +20,15 @@
 #   - Golden fixtures stratified by fix ARCHETYPE, not by issue (Approach 1).
 #   - Invariant/property gates that encode the contract, so they hold for
 #     unseen findings too (Approach 2).
-#   - Each candidate model's edit is captured live ONCE and frozen under
-#     captured/<alias>.json; re-runs replay the frozen transcript (free,
+#   - Each candidate model's edit is captured live ONCE by
+#     eval/capture-apply-fix.sh and frozen under captured/<alias>.json with a
+#     provenance marker; re-runs replay the frozen transcript (free,
 #     deterministic) and recompute cost from token counts x eval/model-pricing.json.
+#   - A fail-closed PROVENANCE GATE (section 3) rejects any candidate transcript
+#     lacking provenance.live == true / real token usage: an unverified,
+#     hand-authored capture counts as a FAIL, never a silent pass.
 #   - The judge score is frozen alongside the edit; eval/judge/run-judge.sh
-#     regenerates it live (stronger model, temp 0, N runs).
+#     regenerates it live (stronger model, N runs) and stamps its own provenance.
 #
 # Modelled structurally on eval/eval-radar.sh: throwaway sandbox, pinned
 # expectations, hard ok/bad assertions, non-zero exit on any FAIL.
@@ -504,6 +508,22 @@ for alias in "${LADDER[@]}"; do
     name="$(basename "$fx")"
     [ -s "$cap" ] || { printf '    (no transcript for %s)\n' "$name"; continue; }
     M_TOT[$alias]=$(( M_TOT[$alias] + 1 ))
+    # Fail-closed provenance gate: a candidate transcript is evidence only if it
+    # is a genuine live capture -- provenance.live == true AND real token usage.
+    # Hand-authored placeholders (no provenance, usage.input_tokens == 0) are
+    # UNVERIFIED and must count as a FAIL, never a silent pass. Regenerate a real
+    # one with eval/capture-apply-fix.sh. (golden_cap positive controls and
+    # captured/_bad.json negative controls are checked elsewhere and exempt.)
+    prov_live="$(jq -r '.provenance.live // false' "$cap")"
+    cap_intok="$(jq -r '.usage.input_tokens // 0' "$cap")"
+    case "$cap_intok" in ''|*[!0-9]*) cap_intok=0 ;; esac
+    if [ "$prov_live" != "true" ] || [ "$cap_intok" -le 0 ]; then
+      RESULT["${alias}|${name}"]="fail"
+      REASON["${alias}|${name}"]="unverified: no live-capture provenance -- regenerate via eval/capture-apply-fix.sh"
+      FIDELITY["${alias}|${name}"]="diverged"; DIST["${alias}|${name}"]=999
+      bad "${alias}/${name}: UNVERIFIED transcript -- ${REASON["${alias}|${name}"]}"
+      continue
+    fi
     if run_gates "$fx" "$cap"; then
       M_PASS[$alias]=$(( M_PASS[$alias] + 1 ))
       RESULT["${alias}|${name}"]="pass"; REASON["${alias}|${name}"]="all hard gates pass"
