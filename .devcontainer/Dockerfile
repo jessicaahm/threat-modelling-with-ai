@@ -72,10 +72,9 @@ RUN pipx install pre-commit
 # uv: fast Python package/project manager, installed to ~/.local/bin (already on PATH).
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Scanner toolchain for the vulnerability-checker agent (agent/vuln_agent):
-# Semgrep for SAST, Trivy for dependency/SCA scanning. Trivy ships as a
-# GitHub release binary (no apt repo pinning needed); version pinned so the
-# eval harness expectations stay stable.
+# Scanner toolchain used by the DevSecOps checks: Semgrep for SAST, Trivy for
+# dependency/SCA scanning. Trivy ships as a GitHub release binary (no apt repo
+# pinning needed); version pinned so the eval harness expectations stay stable.
 RUN pipx install semgrep==1.170.0
 ARG TRIVY_VERSION=0.72.0
 RUN arch="$(dpkg --print-architecture)" && \

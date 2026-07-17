@@ -67,14 +67,24 @@ request:
 
    If no PR exists, do not create one and do not fall back to issues — report
    that there is no PR to comment on and return the suggestions in your message.
-3. Post the prioritized list as a single PR comment, preserving the tags:
+3. Post the prioritized list as a single PR comment, preserving the tags. The
+   comment body contains backticks and `file:line`/code fragments, so it must
+   **never** be passed through a double-quoted `--body "..."` argument — the
+   shell would run command substitution on any `` `...` `` or `$(...)` and
+   corrupt (or execute) the text. Feed the body via stdin with `--body-file -`
+   using a quoted heredoc, which disables all expansion:
 
    ```bash
-   gh pr comment <number> --body "<the formatted suggestions>"
+   gh pr comment <number> --body-file - <<'REFLECTION'
+   Reflection on <SHA> (branch <branch>)
+
+   <the formatted suggestions>
+   REFLECTION
    ```
 
-   Include the reviewed commit SHA and branch at the top of the comment body so
-   the feedback traces to the diff that prompted it.
+   The quoted `'REFLECTION'` delimiter is required — it keeps the body literal.
+   Include the reviewed commit SHA and branch at the top so the feedback traces
+   to the diff that prompted it.
 4. Treat a non-zero exit from `gh pr comment` as the real gate: if it fails
    (auth, permissions), report the failure and fall back to returning the
    suggestions in your final message. Never retry with `--no-verify`-style
