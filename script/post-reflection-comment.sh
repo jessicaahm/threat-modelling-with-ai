@@ -29,13 +29,13 @@ if [ "${PR_NUMBER}" -eq 0 ]; then
   echo "ERROR: PR number must be a positive integer." >&2
   exit 2
 fi
-case "${EXPECTED_HEAD}" in
-  [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]) ;;
-  *) echo "ERROR: head SHA must contain exactly 40 hexadecimal characters." >&2; exit 2 ;;
-esac
+if ! [[ "${EXPECTED_HEAD}" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "ERROR: head SHA must contain exactly 40 hexadecimal characters." >&2
+  exit 2
+fi
 EXPECTED_HEAD="$(printf '%s' "${EXPECTED_HEAD}" | tr '[:upper:]' '[:lower:]')"
 
-for cmd in git gh jq mktemp wc head; do
+for cmd in git gh jq mktemp wc head tr; do
   command -v "${cmd}" >/dev/null 2>&1 || {
     echo "ERROR: '${cmd}' is required." >&2
     exit 1

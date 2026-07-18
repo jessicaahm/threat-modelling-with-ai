@@ -1,7 +1,7 @@
 ---
 name: reflection
 description: Post-commit read-only reflection pass. Reviews context supplied by /fix-commits and returns prioritized findings plus a proposed PR comment. Never edits code, runs commands, accesses credentials, or posts externally.
-model: sonnet
+model: opus
 tools: Read, Grep, Glob
 ---
 

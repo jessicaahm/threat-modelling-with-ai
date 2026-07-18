@@ -169,6 +169,7 @@ chat. Never create a PR or issue as a fallback.
 
 Relay the findings as a short prioritized list, preserving each
 `[blocking-this-diff]` or `[follow-up]` tag. Do not apply them automatically.
+
 ### 6. Optionally remediate the findings
 
 Only offered after step 5 produced findings. This step **edits code** and is

@@ -6,7 +6,8 @@
     "defaultMode": "plan",
     "ask": [
       "Bash(script/post-reflection-comment.sh *)",
-      "Bash(./script/post-reflection-comment.sh *)"
+      "Bash(./script/post-reflection-comment.sh *)",
+      "Bash(*post-reflection-comment.sh *)"
     ],
     "deny": [
       "Read(.devcontainer/.vault-radar-license)",
