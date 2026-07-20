@@ -15,6 +15,8 @@ A secure-SDLC demo repo: it proves out building an AI security-scanning agent wh
 
 ## Hard rules
 - Scripts fail **closed**: a missing license/config/binary or a scan error must block, never silently skip. Preserve each script's existing `set` flags and quoting; run `bash -n` after editing shell. Don't invent new build tooling.
+- Vault is the only secret source: retrieve every secret from Vault (namespace `admin`, mount `tmai`) via the helper scripts — never hardcode, inline, or fetch secrets from anywhere else.
+- Only tools read secrets: secrets are read exclusively by tooling (`script/*` helpers, MCP servers), never by Claude directly. A secret must never be visible in AI context, echoed to the terminal, passed in argv, or persisted in the shell — except the sanctioned, session-scoped `HCP_PROJECT_ID`/`HCP_CLIENT_ID`/`HCP_CLIENT_SECRET` exports performed by sourcing `script/fetch-vault-radar-mcp-creds.sh` to hand credentials to the `vault-radar` MCP server (see `## Vault / MCP` below); no other exporting/writing of secret values into the environment or files beyond the guarded, gitignored credential files is permitted.
 - Never print, echo, log, or put secrets in argv or AI context. Radar findings reference detector + `file:line:col` only — never secret values.
 - Never bypass the Radar hook: no `git commit --no-verify` / `-n`. `.pre-commit-config.yaml` is edit-denied.
 - Two guarded, gitignored secret files are read/edit-denied to the assistant: `.devcontainer/.vault-radar-license` and `.devcontainer/.openai-api-key`. Interact only via the helper scripts. A hook denies any Bash command whose text mentions those filenames.

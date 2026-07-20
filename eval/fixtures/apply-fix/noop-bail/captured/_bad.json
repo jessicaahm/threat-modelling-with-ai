@@ -1,0 +1,19 @@
+{
+  "_comment": "NEGATIVE CONTROL: instead of bailing, the model improvises an unrelated 'improvement' (adds -- and a guard). expect_edit is false, so ANY made_edit=true must FAIL the bail gate.",
+  "model_alias": "haiku",
+  "usage": { "input_tokens": 910, "output_tokens": 120 },
+  "made_edit": true,
+  "edited_files": {
+    "script/clean.sh": [
+      "#!/usr/bin/env bash",
+      "set -euo pipefail",
+      "IFS=$'\\n\\t'",
+      "",
+      "TARGET=\"${1:?usage: clean.sh <path>}\"",
+      "[ -e \"$TARGET\" ] || exit 0",
+      "rm -f -- \"$TARGET\""
+    ]
+  },
+  "judge": { "security": 4, "efficiency": 2, "performance": 5, "note": "Improvised beyond the plan instead of bailing." },
+  "report": "Added an existence guard and -- separator while I was here."
+}

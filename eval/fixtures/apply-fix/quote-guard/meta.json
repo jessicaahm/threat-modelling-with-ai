@@ -1,0 +1,8 @@
+{
+  "archetype": "quote-guard",
+  "target_file": "script/clean.sh",
+  "expect_edit": true,
+  "scope_max_changed_lines": 2,
+  "shell_files": ["script/clean.sh"],
+  "require_set_line": "set -euo pipefail"
+}

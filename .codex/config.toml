@@ -1,0 +1,47 @@
+# Repository-scoped Codex security defaults.
+# Codex loads this file only after the project has been trusted.
+
+# Keep routine work inside the repository and require a human decision before
+# Codex crosses the sandbox boundary.
+approval_policy = "on-request"
+approvals_reviewer = "user"
+sandbox_mode = "workspace-write"
+
+# Avoid implicit shell startup scripts and live web content. Cached search is
+# still untrusted input, but it avoids direct browsing by default.
+allow_login_shell = false
+web_search = "cached"
+
+[sandbox_workspace_write]
+# Do not extend write access beyond the repository or grant command network
+# access. Temporary directories are excluded from writable roots as well.
+writable_roots = []
+network_access = false
+exclude_tmpdir_env_var = true
+exclude_slash_tmp = true
+
+[shell_environment_policy]
+# Pass only the core environment to subprocesses, retain Codex's built-in
+# KEY/SECRET/TOKEN filtering, and explicitly remove common credential families.
+inherit = "core"
+ignore_default_excludes = false
+exclude = [
+  "*PASSWORD*",
+  "*TOKEN*",
+  "*SECRET*",
+  "*KEY*",
+  "VAULT_*",
+  "HCP_*",
+  "OPENAI_*",
+  "GH_*",
+  "AWS_*",
+  "AZURE_*",
+]
+
+[apps._default]
+# Keep connector reads available, but block destructive/open-world tools and
+# require approval before any tool not marked read-only can run.
+destructive_enabled = false
+open_world_enabled = false
+approvals_reviewer = "user"
+default_tools_approval_mode = "writes"

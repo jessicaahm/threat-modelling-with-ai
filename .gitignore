@@ -4,3 +4,6 @@
 # (script/fetch-openai-key.sh), never committed.
 .devcontainer/.openai-api-key
 __pycache__/
+# macOS Finder metadata — never useful in the repo.
+.DS_Store
+**/.DS_Store
