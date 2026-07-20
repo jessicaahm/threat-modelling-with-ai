@@ -99,6 +99,20 @@ RUN arch="$(dpkg --print-architecture)" && \
   rm /tmp/vault-radar-mcp-server.zip && \
   chmod 0755 /home/$USERNAME/.local/bin/vault-radar-mcp-server
 
+# Anthropic CLI (`ant`): the eval harness's live tools call the model through it
+# (eval/capture-apply-fix.sh, eval/judge/run-judge.sh -> `ant messages create`).
+# Version pinned so eval expectations stay stable, matching Trivy / vault-radar-mcp-server.
+ARG ANT_VERSION=1.18.0
+RUN arch="$(dpkg --print-architecture)" && \
+  case "$arch" in \
+    amd64|arm64) ;; \
+    *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+  esac && \
+  curl -fsSL "https://github.com/anthropics/anthropic-cli/releases/download/v${ANT_VERSION}/ant_${ANT_VERSION}_linux_${arch}.tar.gz" \
+    | tar -xz -C /home/$USERNAME/.local/bin ant && \
+  chmod 0755 /home/$USERNAME/.local/bin/ant && \
+  ant --version
+
 RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.2.0/zsh-in-docker.sh)" -- \
   -p git \
   -p fzf \

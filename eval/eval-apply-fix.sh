@@ -225,8 +225,12 @@ emit_scorecard() {
     RATEP[$a]="$(awk -v p="$okn" -v t="$tot" 'BEGIN{printf "%d", (t>0)?(p/t)*100:0}')"
     if [ "${M_SECN[$a]:-0}" -gt 0 ]; then
       SECA[$a]="$(awk -v s="${M_SECSUM[$a]}" -v n="${M_SECN[$a]}" 'BEGIN{printf "%.2f", s/n}')"
-      EFFA[$a]="$(awk -v s="${M_EFFSUM[$a]:-0}" -v n="${M_SECN[$a]}" 'BEGIN{printf "%.2f", s/n}')"
-      PERFA[$a]="$(awk -v s="${M_PERFSUM[$a]:-0}" -v n="${M_SECN[$a]}" 'BEGIN{printf "%.2f", s/n}')"
+      if [ "${M_EFFN[$a]:-0}" -gt 0 ]; then
+        EFFA[$a]="$(awk -v s="${M_EFFSUM[$a]:-0}" -v n="${M_EFFN[$a]}" 'BEGIN{printf "%.2f", s/n}')"
+      else EFFA[$a]="n/a"; fi
+      if [ "${M_PERFN[$a]:-0}" -gt 0 ]; then
+        PERFA[$a]="$(awk -v s="${M_PERFSUM[$a]:-0}" -v n="${M_PERFN[$a]}" 'BEGIN{printf "%.2f", s/n}')"
+      else PERFA[$a]="n/a"; fi
     else SECA[$a]="n/a"; EFFA[$a]="n/a"; PERFA[$a]="n/a"; fi
     CLEARS[$a]="no"
     if [ "$tot" -gt 0 ] && [ "$okn" -eq "$tot" ]; then
@@ -491,7 +495,7 @@ done
 # =========================================================================
 head_ "3. Candidate ladder: per-model hard gates + replayed judge"
 declare -A M_TOT M_PASS M_SECSUM M_SECN M_COST M_MODELID
-declare -A M_EFFSUM M_PERFSUM     # judge efficiency/performance sums (same count as M_SECN)
+declare -A M_EFFSUM M_PERFSUM M_EFFN M_PERFN  # judge efficiency/performance sums + their own counts
 declare -A RESULT REASON      # RESULT["<alias>|<fixture>"] = pass|fail (for scorecard.html)
 declare -A FIDELITY DIST      # plan fidelity: exact|equivalent|diverged, + diff-distance to golden
 declare -A JSEC JEFF JPERF JNOTE  # per-cell replayed judge scores + one-line note
@@ -501,7 +505,7 @@ for alias in "${LADDER[@]}"; do
   out_price="$(jq -r --arg m "$model_id" '.[$m].output_per_mtok' "$PRICING")"
   M_MODELID[$alias]="$model_id"
   M_TOT[$alias]=0; M_PASS[$alias]=0; M_SECSUM[$alias]=0; M_SECN[$alias]=0; M_COST[$alias]=0
-  M_EFFSUM[$alias]=0; M_PERFSUM[$alias]=0
+  M_EFFSUM[$alias]=0; M_PERFSUM[$alias]=0; M_EFFN[$alias]=0; M_PERFN[$alias]=0
   printf '\n  \033[1m%s\033[0m (%s)\n' "$alias" "$model_id"
   for fx in "${FIXTURES[@]}"; do
     cap="${fx}/captured/${alias}.json"
@@ -546,8 +550,8 @@ for alias in "${LADDER[@]}"; do
       perf="$(jq -r '.judge.performance // empty' "$cap")"
       note="$(jq -r '.judge.note // ""' "$cap")"
       M_SECSUM[$alias]="$(awk -v s="${M_SECSUM[$alias]}" -v x="$sec" 'BEGIN{printf "%.4f", s + x}')"
-      [ -n "$eff" ]  && M_EFFSUM[$alias]="$(awk -v s="${M_EFFSUM[$alias]}" -v x="$eff" 'BEGIN{printf "%.4f", s + x}')"
-      [ -n "$perf" ] && M_PERFSUM[$alias]="$(awk -v s="${M_PERFSUM[$alias]}" -v x="$perf" 'BEGIN{printf "%.4f", s + x}')"
+      [ -n "$eff" ]  && { M_EFFSUM[$alias]="$(awk -v s="${M_EFFSUM[$alias]}" -v x="$eff" 'BEGIN{printf "%.4f", s + x}')"; M_EFFN[$alias]=$(( M_EFFN[$alias] + 1 )); }
+      [ -n "$perf" ] && { M_PERFSUM[$alias]="$(awk -v s="${M_PERFSUM[$alias]}" -v x="$perf" 'BEGIN{printf "%.4f", s + x}')"; M_PERFN[$alias]=$(( M_PERFN[$alias] + 1 )); }
       M_SECN[$alias]=$(( M_SECN[$alias] + 1 ))
       JSEC["${alias}|${name}"]="$sec"; JEFF["${alias}|${name}"]="$eff"
       JPERF["${alias}|${name}"]="$perf"; JNOTE["${alias}|${name}"]="$note"

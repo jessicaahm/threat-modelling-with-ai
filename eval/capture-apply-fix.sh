@@ -21,17 +21,21 @@
 #     [alias ...]    one or more ladder aliases (default: haiku sonnet opus)
 #
 # Env:
-#   ANTHROPIC_API_KEY   preferred auth (x-api-key). Else an `ant auth` profile
-#                       is used (Authorization: Bearer + oauth beta header).
+#   ANTHROPIC_API_KEY   optional. If unset, the `ant` CLI uses your `ant auth
+#                       login` OAuth profile instead -- no static key needed.
 #
-# Auth and request shape intentionally mirror eval/judge/run-judge.sh so the two
-# live tools stay consistent. NOTE ON DETERMINISM: temperature 0 is only sent to
-# models that still accept sampling params; Opus 4.8 / Sonnet 5 reject it with a
-# 400, so it is omitted there (same handling as run-judge.sh).
+# Auth goes through the official Anthropic CLI (`ant messages create`), which
+# resolves credentials the same way the SDKs do (ANTHROPIC_API_KEY, else the
+# active OAuth profile) and refreshes tokens for us -- so this script builds no
+# auth headers of its own. Request shape intentionally mirrors
+# eval/judge/run-judge.sh so the two live tools stay consistent. NOTE ON
+# DETERMINISM: temperature 0 is only sent to models that still accept sampling
+# params; Opus 4.8 / Sonnet 5 reject it with a 400, so it is omitted there (same
+# handling as run-judge.sh).
 #
 # SECURITY: fixtures use FAKE, HashiCorpIgnore-marked credentials. This script
 # never prints a secret value and never puts one in argv; it only moves file
-# contents between the fixture, the request body (stdin to jq/curl), and the
+# contents between the fixture, the request body (stdin to jq/ant), and the
 # captured JSON.
 
 set -euo pipefail
@@ -46,23 +50,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PRICING="${REPO_ROOT}/eval/model-pricing.json"
 AGENT="${REPO_ROOT}/.claude/agents/apply-fix.md"
 
-command -v jq   >/dev/null 2>&1 || { echo "ERROR: jq required."   >&2; exit 1; }
-command -v curl >/dev/null 2>&1 || { echo "ERROR: curl required." >&2; exit 1; }
+command -v jq  >/dev/null 2>&1 || { echo "ERROR: jq required."  >&2; exit 1; }
+command -v ant >/dev/null 2>&1 || { echo "ERROR: ant CLI required (Anthropic CLI; run 'ant auth login' or set ANTHROPIC_API_KEY)." >&2; exit 1; }
 [ -d "$FX" ]        || { echo "ERROR: fixture dir not found: $FX" >&2; exit 1; }
 [ -s "$PRICING" ]   || { echo "ERROR: pricing file missing: $PRICING" >&2; exit 1; }
 [ -s "${FX}/plan.md" ]   || { echo "ERROR: fixture missing plan.md: $FX" >&2; exit 1; }
 [ -s "${FX}/meta.json" ] || { echo "ERROR: fixture missing meta.json: $FX" >&2; exit 1; }
-
-# --- Auth (mirrors run-judge.sh) ------------------------------------------
-auth_headers=(-H "anthropic-version: 2023-06-01" -H "content-type: application/json")
-if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-  auth_headers+=(-H "x-api-key: ${ANTHROPIC_API_KEY}")
-elif command -v ant >/dev/null 2>&1; then
-  tok="$(ant auth print-credentials --access-token)"
-  auth_headers+=(-H "Authorization: Bearer ${tok}" -H "anthropic-beta: oauth-2025-04-20")
-else
-  echo "ERROR: no ANTHROPIC_API_KEY and no ant CLI for auth." >&2; exit 2
-fi
 
 # --- Fixture inputs -------------------------------------------------------
 target="$(jq -r '.target_file' "${FX}/meta.json")"
@@ -123,12 +116,14 @@ capture_one() {
       output_config:{format:{type:\"json_schema\", schema:\$schema}, effort:\"low\"},
       messages:[{role:\"user\", content:\$user}]}")"
 
+  # `ant messages create` reads the full request body from stdin and resolves
+  # auth itself (ANTHROPIC_API_KEY, else the `ant auth login` OAuth profile).
   local resp
-  resp="$(curl -sS https://api.anthropic.com/v1/messages "${auth_headers[@]}" -d "$body")" \
-    || { echo "  ERROR: request failed for ${alias}" >&2; return 3; }
+  resp="$(printf '%s' "$body" | ant messages create --format json)" \
+    || { echo "  ERROR: request failed for ${alias} (check 'ant auth login' or ANTHROPIC_API_KEY)" >&2; return 3; }
 
   local err
-  err="$(jq -r '.error.message // empty' <<<"$resp")"
+  err="$(jq -r '.error.message // empty' <<<"$resp" 2>/dev/null)"
   [ -z "$err" ] || { echo "  ERROR: API error for ${alias}: ${err}" >&2; return 3; }
 
   local txt in_tok out_tok

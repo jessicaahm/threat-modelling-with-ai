@@ -102,9 +102,10 @@ What it does:
 - writes the averaged `security/efficiency/performance` back into the transcript's
   `judge` field, so the next deterministic run reflects it.
 
-**Auth** (per the `claude-api` guidance): uses `ANTHROPIC_API_KEY` if set; otherwise
-an `ant auth login` profile (Bearer token via `ant auth print-credentials`). No key
-in the repo.
+**Auth**: the live scripts call the model through the official Anthropic CLI
+(`ant messages create`), which resolves credentials the same way the SDKs do --
+`ANTHROPIC_API_KEY` if set, otherwise your `ant auth login` OAuth profile. No
+static key is required and none lives in the repo; `ant` handles token refresh.
 
 **The bar** the judge feeds into: a model clears it only with **100% on the
 non-negotiable gates AND judge security ≥ 4.5**. That combined rule drives the
@@ -156,7 +157,7 @@ it (free, deterministic) and recompute cost from token counts ×
 **fail-closed provenance gate** (§3) fails any candidate transcript that lacks
 `provenance.live == true` or real token usage, so a hand-authored placeholder
 counts as a FAIL instead of masquerading as evidence. Regenerate a real transcript
-with `capture-apply-fix.sh` (needs `ANTHROPIC_API_KEY` or an `ant auth` profile);
+with `capture-apply-fix.sh` (needs the `ant` CLI: an `ant auth login` profile or `ANTHROPIC_API_KEY`);
 refresh its judge field with `eval/judge/run-judge.sh`, which stamps its own
 liveness provenance.
 

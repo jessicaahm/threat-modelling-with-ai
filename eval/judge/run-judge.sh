@@ -17,8 +17,9 @@
 #   JUDGE_MODEL   default claude-opus-4-8 (must be >= the candidate model)
 #   N             number of judge samples to average (default 5)
 #
-# Auth: uses ANTHROPIC_API_KEY if set; otherwise an `ant auth login` profile
-# (Authorization: Bearer via `ant auth print-credentials --access-token`).
+# Auth: goes through the official Anthropic CLI (`ant messages create`), which
+# resolves credentials like the SDKs do -- ANTHROPIC_API_KEY if set, otherwise
+# the `ant auth login` OAuth profile. No static key or auth headers required.
 #
 # NOTE ON DETERMINISM: temperature 0 is only accepted by models that still take
 # sampling params (e.g. claude-sonnet-4-6). Opus 4.8 / 4.7 / Sonnet 5 reject
@@ -36,8 +37,8 @@ JUDGE_MODEL="${JUDGE_MODEL:-claude-opus-4-8}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RUBRIC="${REPO_ROOT}/eval/judge/apply-fix-rubric.md"
 
-command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required." >&2; exit 1; }
-command -v curl >/dev/null 2>&1 || { echo "ERROR: curl required." >&2; exit 1; }
+command -v jq  >/dev/null 2>&1 || { echo "ERROR: jq required."  >&2; exit 1; }
+command -v ant >/dev/null 2>&1 || { echo "ERROR: ant CLI required (Anthropic CLI; run 'ant auth login' or set ANTHROPIC_API_KEY)." >&2; exit 1; }
 
 target="$(jq -r '.target_file' "${FX}/meta.json")"
 
@@ -54,17 +55,6 @@ rm -f "$edited_f"
 
 plan_text="$(cat "${FX}/plan.md")"
 rubric_text="$(cat "$RUBRIC")"
-
-# Auth headers (skill guidance: x-api-key, else OAuth bearer + beta header).
-auth_headers=(-H "anthropic-version: 2023-06-01" -H "content-type: application/json")
-if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-  auth_headers+=(-H "x-api-key: ${ANTHROPIC_API_KEY}")
-elif command -v ant >/dev/null 2>&1; then
-  tok="$(ant auth print-credentials --access-token)"
-  auth_headers+=(-H "Authorization: Bearer ${tok}" -H "anthropic-beta: oauth-2025-04-20")
-else
-  echo "ERROR: no ANTHROPIC_API_KEY and no ant CLI for auth." >&2; exit 2
-fi
 
 SCHEMA='{"type":"object","additionalProperties":false,
   "properties":{
@@ -91,7 +81,7 @@ body="$(jq -n --arg m "$JUDGE_MODEL" --arg sys "$sys" --arg user "$user" --argjs
 
 sec_sum=0; eff_sum=0; perf_sum=0; got=0
 for i in $(seq 1 "$N"); do
-  resp="$(curl -sS https://api.anthropic.com/v1/messages "${auth_headers[@]}" -d "$body")" || continue
+  resp="$(printf '%s' "$body" | ant messages create --format json)" || continue
   txt="$(printf '%s' "$resp" | jq -r '.content[]? | select(.type=="text") | .text' 2>/dev/null | head -c 4000)"
   [ -n "$txt" ] || { echo "  sample $i: no content" >&2; continue; }
   s="$(printf '%s' "$txt" | jq -r '.security.score' 2>/dev/null)"

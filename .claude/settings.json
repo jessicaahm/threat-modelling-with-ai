@@ -4,6 +4,12 @@
   },
   "permissions": {
     "defaultMode": "plan",
+    "allow": [
+      "Task(reflection)",
+      "Read",
+      "Grep",
+      "Glob"
+    ],
     "ask": [
       "Bash(script/post-reflection-comment.sh *)",
       "Bash(./script/post-reflection-comment.sh *)",
