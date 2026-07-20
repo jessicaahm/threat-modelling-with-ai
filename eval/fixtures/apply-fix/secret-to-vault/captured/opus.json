@@ -1,6 +1,9 @@
 {
   "model_alias": "opus",
-  "usage": { "input_tokens": 1320, "output_tokens": 262 },
+  "usage": {
+    "input_tokens": 4546,
+    "output_tokens": 471
+  },
   "made_edit": true,
   "edited_files": {
     "script/deploy.sh": [
@@ -9,7 +12,6 @@
       "IFS=$'\\n\\t'",
       "",
       "# Deploy helper for the demo service.",
-      "# API_TOKEN is loaded from Vault by the sourced helper, never hardcoded.",
       "source \"$(dirname \"$0\")/fetch-deploy-token.sh\"",
       "",
       ": \"${API_TOKEN:?deploy: API_TOKEN not set}\"",
@@ -27,6 +29,11 @@
       "echo \"deploy: OK\""
     ]
   },
-  "judge": { "security": 5, "efficiency": 5, "performance": 5, "note": "Faithful surgical fix; no scope creep." },
-  "report": "[blocking-this-diff] Removed the hardcoded credential and sourced fetch-deploy-token.sh so $API_TOKEN comes from Vault. bash -n clean."
+  "report": "[blocking-this-diff] Removed hardcoded API_TOKEN literal from script/deploy.sh:6 and replaced it with `source \"$(dirname \"$0\")/fetch-deploy-token.sh\"` to load the token from Vault; guard, deploy(), and stdin request unchanged. Re-read the edited region to confirm.",
+  "provenance": {
+    "tool": "capture-apply-fix.sh",
+    "captured_at": "2026-07-20T02:42:48Z",
+    "model_id": "claude-opus-4-8",
+    "live": true
+  }
 }

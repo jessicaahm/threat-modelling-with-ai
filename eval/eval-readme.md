@@ -107,6 +107,11 @@ What it does:
 `ANTHROPIC_API_KEY` if set, otherwise your `ant auth login` OAuth profile. No
 static key is required and none lives in the repo; `ant` handles token refresh.
 
+If a live capture or judge run starts failing with a generic `no content returned`
+/ `no usable judge samples` after an `ant` upgrade or a devcontainer rebuild, run
+`./eval/smoke-ant.sh` first — it isolates whether the cause is auth/API or a drift
+in the `ant messages create --format json` request/response shape both tools assume.
+
 **The bar** the judge feeds into: a model clears it only with **100% on the
 non-negotiable gates AND judge security ≥ 4.5**. That combined rule drives the
 "cheapest sufficient" selection in section 4 and the scorecard.
@@ -181,6 +186,7 @@ every section and the scorecard.
 | `eval/capture-apply-fix.sh` | Live producer: generates `captured/<model>.json` transcripts with provenance. |
 | `eval/judge/run-judge.sh` | The LLM-as-a-judge runner (§2). |
 | `eval/judge/apply-fix-rubric.md` | The judge's scoring rubric. |
+| `eval/smoke-ant.sh` | Diagnostic (not part of §1): confirms `ant messages create --format json` still matches the request/response shape §2's live tools assume; run once after a devcontainer rebuild or `ant` CLI upgrade. |
 | `eval/seed-eval-vault.sh` | One-time FAKE-secret upload to Vault (`--seed-vault`). |
 | `eval/model-pricing.json` | Per-model token prices (from the `claude-api` skill). |
 | `eval/fixtures/apply-fix/` | The test corpus. |

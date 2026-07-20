@@ -5,6 +5,7 @@
     ]
   },
   "enabledMcpjsonServers": [
-    "vault-radar"
+    "vault-radar",
+    "terraform"
   ]
 }

@@ -1,6 +1,9 @@
 {
   "model_alias": "haiku",
-  "usage": { "input_tokens": 1320, "output_tokens": 236 },
+  "usage": {
+    "input_tokens": 3315,
+    "output_tokens": 335
+  },
   "made_edit": true,
   "edited_files": {
     "script/deploy.sh": [
@@ -9,7 +12,6 @@
       "IFS=$'\\n\\t'",
       "",
       "# Deploy helper for the demo service.",
-      "# API_TOKEN is loaded from Vault by the sourced helper, never hardcoded.",
       "source \"$(dirname \"$0\")/fetch-deploy-token.sh\"",
       "",
       ": \"${API_TOKEN:?deploy: API_TOKEN not set}\"",
@@ -27,6 +29,11 @@
       "echo \"deploy: OK\""
     ]
   },
-  "judge": { "security": 5, "efficiency": 5, "performance": 5, "note": "Literal removed, sourced from the Vault helper, fail-closed set flags and guard intact; minimal surgical diff." },
-  "report": "[blocking-this-diff] Removed hardcoded API_TOKEN literal from script/deploy.sh:6 and sourced fetch-deploy-token.sh so the value comes from Vault. bash -n clean."
+  "report": "[blocking-this-diff] Removed hardcoded API_TOKEN literal from script/deploy.sh:6 and replaced it with a source call to fetch-deploy-token.sh. The secret now loads from Vault at runtime via the existing helper, keeping credentials out of the committed source tree while preserving the guard check and stdin-fed request pattern.",
+  "provenance": {
+    "tool": "capture-apply-fix.sh",
+    "captured_at": "2026-07-20T02:42:31Z",
+    "model_id": "claude-haiku-4-5",
+    "live": true
+  }
 }

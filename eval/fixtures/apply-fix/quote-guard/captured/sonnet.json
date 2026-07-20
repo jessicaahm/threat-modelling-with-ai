@@ -1,6 +1,9 @@
 {
   "model_alias": "sonnet",
-  "usage": { "input_tokens": 940, "output_tokens": 104 },
+  "usage": {
+    "input_tokens": 2541,
+    "output_tokens": 173
+  },
   "made_edit": true,
   "edited_files": {
     "script/clean.sh": [
@@ -12,6 +15,11 @@
       "rm -f \"$TARGET\""
     ]
   },
-  "judge": { "security": 5, "efficiency": 5, "performance": 5, "note": "Correct, minimal." },
-  "report": "[blocking-this-diff] Quoted the expansion. bash -n clean."
+  "report": "[blocking-this-diff] Quoted $TARGET expansion at script/clean.sh:6 to prevent word-splitting/glob injection; re-read region before editing, no other changes made.",
+  "provenance": {
+    "tool": "capture-apply-fix.sh",
+    "captured_at": "2026-07-20T02:44:31Z",
+    "model_id": "claude-sonnet-5",
+    "live": true
+  }
 }

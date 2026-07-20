@@ -1,8 +1,16 @@
 {
   "model_alias": "sonnet",
-  "usage": { "input_tokens": 910, "output_tokens": 70 },
+  "usage": {
+    "input_tokens": 2634,
+    "output_tokens": 93
+  },
   "made_edit": false,
   "edited_files": {},
-  "judge": { "security": 5, "efficiency": 5, "performance": 5, "note": "Correct bail." },
-  "report": "No change: line already quoted; bailing per contract."
+  "report": "[blocking-this-diff] Bail: script/clean.sh:6 already reads rm -f \"$TARGET\" — anchor text 'rm -f $TARGET' no longer present, so no edit applied.",
+  "provenance": {
+    "tool": "capture-apply-fix.sh",
+    "captured_at": "2026-07-20T02:43:45Z",
+    "model_id": "claude-sonnet-5",
+    "live": true
+  }
 }

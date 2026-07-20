@@ -91,12 +91,31 @@ edited_files object if you correctly bail."
 user="$(printf 'APPLY-FIX CONTRACT (for reference):\n%s\n\nAPPROVED PLAN:\n%s\n\nCURRENT FILES (path -> lines), rooted at the repo working dir:\n%s\n\nReturn the edited files (full new contents per changed file), made_edit, and a one-line report.\n' \
   "$contract" "$plan_text" "$start_json")"
 
-SCHEMA='{"type":"object","additionalProperties":false,
-  "properties":{
-    "made_edit":{"type":"boolean"},
-    "edited_files":{"type":"object","additionalProperties":{"type":"array","items":{"type":"string"}}},
-    "report":{"type":"string"}},
-  "required":["made_edit","edited_files","report"]}'
+# Structured outputs require every object schema to reject unknown properties.
+# Enumerate the fixture's edit scope so edited_files remains a path -> lines map
+# without relying on a dynamic additionalProperties schema (rejected by the API).
+edit_properties='{}'
+for rel in "${edit_scope[@]}"; do
+  edit_properties="$(jq --arg path "$rel" \
+    '. + {($path): {type: "array", items: {type: "string"}}}' \
+    <<<"$edit_properties")"
+done
+
+SCHEMA="$(jq -n --argjson edit_properties "$edit_properties" '
+  {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      made_edit: {type: "boolean"},
+      edited_files: {
+        type: "object",
+        properties: $edit_properties,
+        additionalProperties: false
+      },
+      report: {type: "string"}
+    },
+    required: ["made_edit", "edited_files", "report"]
+  }')"
 
 capture_one() {
   local alias="$1"
@@ -110,10 +129,16 @@ capture_one() {
     claude-sonnet-4-6|claude-sonnet-4-5|claude-haiku-4-5) extra='"temperature":0,' ;;
   esac
 
+  local effort=false
+  case "$model_id" in
+    claude-opus-4-5|claude-opus-4-6|claude-opus-4-7|claude-opus-4-8|claude-sonnet-4-6|claude-sonnet-5) effort=true ;;
+  esac
+
   local body
-  body="$(jq -n --arg m "$model_id" --arg sys "$sys" --arg user "$user" --argjson schema "$SCHEMA" \
+  body="$(jq -n --arg m "$model_id" --arg sys "$sys" --arg user "$user" --argjson schema "$SCHEMA" --argjson effort "$effort" \
     "{model:\$m, max_tokens:2048, ${extra} system:\$sys,
-      output_config:{format:{type:\"json_schema\", schema:\$schema}, effort:\"low\"},
+      output_config:({format:{type:\"json_schema\", schema:\$schema}} +
+        (if \$effort then {effort:\"low\"} else {} end)),
       messages:[{role:\"user\", content:\$user}]}")"
 
   # `ant messages create` reads the full request body from stdin and resolves

@@ -3,6 +3,10 @@
         "vault-radar": {
             "command": "vault-radar-mcp-server",
             "args": ["stdio"]
+        },
+        "terraform": {
+            "command": "terraform-mcp-server",
+            "args": ["stdio", "--toolsets", "registry,terraform"]
         }
     }
 }
