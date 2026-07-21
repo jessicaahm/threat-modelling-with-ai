@@ -1,7 +1,7 @@
 import psycopg
 
 
-DB_PASSWORD = "fake-db-password-for-testing-only"  # HashiCorpIgnore
+DB_PASSWORD = "fake-db-password-for-testing-only"  
 
 def connect_to_database() -> psycopg.Connection:
   """Open a sample PostgreSQL connection using the fake password fixture."""
