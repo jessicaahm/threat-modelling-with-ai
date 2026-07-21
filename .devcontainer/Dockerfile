@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:20-trixie
 
 ARG TZ
 ENV TZ="$TZ"
@@ -27,12 +27,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ARG USERNAME=node
 
-# HashiCorp apt repo for the Vault Radar CLI (secret-scanning pre-commit hook)
-# and the Vault CLI (used by init-script.sh to bootstrap KV v2 mounts/policies).
+# HashiCorp apt repo for the Vault Radar CLI (secret-scanning pre-commit hook),
+# the Vault CLI (used by init-script.sh to bootstrap KV v2 mounts/policies), and
+# the Terraform CLI (runs the infrastructure/ configs against HCP Terraform).
 RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg && \
   . /etc/os-release && \
   echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $VERSION_CODENAME main" > /etc/apt/sources.list.d/hashicorp.list && \
-  apt-get update && apt-get install -y --no-install-recommends vault-radar vault && \
+  apt-get update && apt-get install -y --no-install-recommends vault-radar vault terraform && \
   # The vault package sets file capability cap_ipc_lock=ep (for `vault server`
   # to mlock memory without running as root). This container's capability
   # bounding set doesn't include cap_ipc_lock, so execve() rejects the binary
@@ -51,8 +52,8 @@ RUN mkdir /commandhistory \
 # Claude Code reads this to know it is running in a container.
 ENV DEVCONTAINER=true
 
-RUN mkdir -p /workspace /home/$USERNAME/.claude /home/$USERNAME/.codex && \
-  chown -R $USERNAME:$USERNAME /workspace /home/$USERNAME/.claude /home/$USERNAME/.codex
+RUN mkdir -p /workspace /home/$USERNAME/.claude /home/$USERNAME/.codex /home/$USERNAME/.config/anthropic && \
+  chown -R $USERNAME:$USERNAME /workspace /home/$USERNAME/.claude /home/$USERNAME/.codex /home/$USERNAME/.config
 
 WORKDIR /workspace
 
@@ -98,6 +99,23 @@ RUN arch="$(dpkg --print-architecture)" && \
   unzip -o /tmp/vault-radar-mcp-server.zip -d /home/$USERNAME/.local/bin && \
   rm /tmp/vault-radar-mcp-server.zip && \
   chmod 0755 /home/$USERNAME/.local/bin/vault-radar-mcp-server
+
+# Terraform MCP server binary. Use stdio directly because Docker is not
+# available inside this devcontainer. Verify the release archive before
+# installing it so a corrupt or substituted download fails the image build.
+ARG TERRAFORM_MCP_SERVER_VERSION=1.0.0
+RUN arch="$(dpkg --print-architecture)" && \
+  archive="terraform-mcp-server_${TERRAFORM_MCP_SERVER_VERSION}_linux_${arch}.zip" && \
+  base_url="https://releases.hashicorp.com/terraform-mcp-server/${TERRAFORM_MCP_SERVER_VERSION}" && \
+  curl -fsSL "${base_url}/${archive}" -o "/tmp/${archive}" && \
+  curl -fsSL "${base_url}/terraform-mcp-server_${TERRAFORM_MCP_SERVER_VERSION}_SHA256SUMS" \
+    -o /tmp/terraform-mcp-server_SHA256SUMS && \
+  checksum="$(grep " ${archive}$" /tmp/terraform-mcp-server_SHA256SUMS)" && \
+  [ -n "${checksum}" ] && \
+  (cd /tmp && printf '%s\n' "${checksum}" | sha256sum -c -) && \
+  unzip -o "/tmp/${archive}" -d /home/$USERNAME/.local/bin && \
+  rm "/tmp/${archive}" /tmp/terraform-mcp-server_SHA256SUMS && \
+  chmod 0755 /home/$USERNAME/.local/bin/terraform-mcp-server
 
 # Anthropic CLI (`ant`): the eval harness's live tools call the model through it
 # (eval/capture-apply-fix.sh, eval/judge/run-judge.sh -> `ant messages create`).

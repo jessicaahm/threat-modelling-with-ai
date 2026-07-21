@@ -72,10 +72,15 @@ extra=""
 case "$JUDGE_MODEL" in
   claude-sonnet-4-6|claude-sonnet-4-5|claude-haiku-4-5) extra=',"temperature":0' ;;
 esac
+effort=false
+case "$JUDGE_MODEL" in
+  claude-opus-4-5|claude-opus-4-6|claude-opus-4-7|claude-opus-4-8|claude-sonnet-4-6|claude-sonnet-5) effort=true ;;
+esac
 
-body="$(jq -n --arg m "$JUDGE_MODEL" --arg sys "$sys" --arg user "$user" --argjson schema "$SCHEMA" \
+body="$(jq -n --arg m "$JUDGE_MODEL" --arg sys "$sys" --arg user "$user" --argjson schema "$SCHEMA" --argjson effort "$effort" \
   '{model:$m, max_tokens:512, system:$sys,
-    output_config:{format:{type:"json_schema", schema:$schema}, effort:"low"},
+    output_config:({format:{type:"json_schema", schema:$schema}} +
+      (if $effort then {effort:"low"} else {} end)),
     messages:[{role:"user", content:$user}]}')"
 [ -n "$extra" ] && body="$(printf '%s' "$body" | jq ". + {$( printf '%s' "$extra" | sed 's/^,//' )}")"
 

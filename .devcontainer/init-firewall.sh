@@ -39,8 +39,17 @@ ALLOWED_DOMAINS=(
   "vault-cluster-public-vault-289b32ee.99820ad2.z1.hashicorp.cloud"
   # HashiCorp apt repo (vault / vault-radar package updates)
   "apt.releases.hashicorp.com"
-  # HashiCorp release binaries (vault-radar-mcp-server, fetched at image build time)
+  # HashiCorp release binaries (MCP servers, fetched at image build time)
   "releases.hashicorp.com"
+  # HCP Vault Radar -- IDE extension + CLI cloud calls (US region). API plane
+  # (api.cloud.hashicorp.com) plus the HCP identity provider used for login.
+  # Without these the Radar extension's HCP activation/scan calls are blocked.
+  "api.cloud.hashicorp.com"
+  "auth.idp.hashicorp.com"
+  # Public provider/module metadata used by Terraform CLI and Terraform MCP.
+  "registry.terraform.io"
+  # HCP Terraform (app.terraform.io) -- remote backend + runs for infrastructure/
+  "app.terraform.io"
   # OpenAI API -- LLM triage layer of the vulnerability-checker agent
   # (agent/vuln_agent --triage). Scanner verdicts never depend on it.
   "api.openai.com"

@@ -372,11 +372,8 @@ HTMLHEAD
   # (produced by eval/judge/run-judge.sh: a stronger-than-candidate model,
   # N-run averaged). The judge can downgrade a gate-passing fix but never rescue
   # a gate-failing one.
-  local have_judge="no" ja
-  for a in "${LADDER[@]}"; do [ "${M_SECN[$a]:-0}" -gt 0 ] && have_judge="yes"; done
-  if [ "$have_judge" = "yes" ]; then
-    printf '<div class="card"><h2>LLM-as-a-judge &mdash; peer review (scores 1&ndash;5)</h2>\n'
-    printf '<p class="note" style="margin-top:0">A stronger-than-candidate model grades the softer axes a pass/fail gate can&rsquo;t &mdash; replayed from each frozen transcript (N-run averaged). It can lower a passing fix, never rescue a failing one. Security drives the bar: <strong>&ge;&nbsp;%s</strong>.</p>\n' "$JUDGE_SECURITY_BAR"
+  printf '<div class="card"><h2>LLM-as-a-judge &mdash; peer review (scores 1&ndash;5)</h2>\n'
+  printf '<p class="note" style="margin-top:0">A stronger-than-candidate model grades the softer axes a pass/fail gate can&rsquo;t &mdash; replayed from each frozen transcript (N-run averaged). It can lower a passing fix, never rescue a failing one. Security drives the bar: <strong>&ge;&nbsp;%s</strong>. Missing results are shown as <strong>not judged yet</strong>.</p>\n' "$JUDGE_SECURITY_BAR"
     # averaged-score summary
     printf '<div class="scroll"><table>\n'
     printf '<thead><tr><th>Model</th><th class="num">Security</th><th class="num">Efficiency</th><th class="num">Performance</th><th>Meets security bar?</th></tr></thead><tbody>\n'
@@ -395,22 +392,25 @@ HTMLHEAD
     done
     printf '</tbody></table></div>\n'
     # per-fixture judge notes (the qualitative "why")
-    printf '<h2 style="margin-top:22px">Judge notes (fixture &times; model)</h2><div class="scroll"><table>\n'
+    printf '<h2 style="margin-top:22px">Individual judge scores (fixture &times; model)</h2><div class="scroll"><table>\n'
     printf '<thead><tr><th>Fixture</th><th>Model</th><th class="num">Sec</th><th class="num">Eff</th><th class="num">Perf</th><th>Reviewer note</th></tr></thead><tbody>\n'
     local jf jname jsec
     for fx in "${FIXTURES[@]}"; do
       jname="$(basename "$fx")"
       for a in "${LADDER[@]}"; do
         jsec="${JSEC["${a}|${jname}"]:-}"
-        [ -n "$jsec" ] || continue
-        printf '<tr><td>%s</td><td>%s</td><td class="num">%s</td><td class="num">%s</td><td class="num">%s</td><td class="desc">%s</td></tr>\n' \
-          "$jname" "$a" "$jsec" "${JEFF["${a}|${jname}"]:-&ndash;}" "${JPERF["${a}|${jname}"]:-&ndash;}" \
-          "$(esc "${JNOTE["${a}|${jname}"]:-}")"
+        if [ -n "$jsec" ]; then
+          printf '<tr><td>%s</td><td>%s</td><td class="num">%s</td><td class="num">%s</td><td class="num">%s</td><td class="desc">%s</td></tr>\n' \
+            "$jname" "$a" "$jsec" "${JEFF["${a}|${jname}"]:-&ndash;}" "${JPERF["${a}|${jname}"]:-&ndash;}" \
+            "$(esc "${JNOTE["${a}|${jname}"]:-}")"
+        else
+          printf '<tr><td>%s</td><td>%s</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td class="desc"><span class="pill no">not judged yet</span></td></tr>\n' \
+            "$jname" "$a"
+        fi
       done
     done
     printf '</tbody></table></div>\n'
     printf '<p class="note">Security / Efficiency / Performance are scored 1&ndash;5 per <code>eval/judge/apply-fix-rubric.md</code>. To (re)generate after a rubric or fix change: <code>JUDGE_MODEL=claude-opus-4-8 ./eval/judge/run-judge.sh &lt;fixture&gt; &lt;captured.json&gt; 5</code>, then re-run this harness.</p></div>\n'
-  fi
 
   # cost bar chart (single measure -> one hue; winner gets a status badge)
   printf '<div class="card"><h2>Cost per 100 fixes</h2><div class="bars">\n'

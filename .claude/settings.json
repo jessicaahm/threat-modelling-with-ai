@@ -20,6 +20,8 @@
       "Read(//workspace/.devcontainer/.vault-radar-license)",
       "Read(.devcontainer/.openai-api-key)",
       "Read(//workspace/.devcontainer/.openai-api-key)",
+      "Read(~/.hcp-terraform-env)",
+      "Read(//home/node/.hcp-terraform-env)",
       "Edit(.pre-commit-config.yaml)"
     ]
   },
@@ -54,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "input=$(cat); cmd=$(printf \"%s\" \"$input\" | jq -r \".tool_input.command\"); if printf \"%s\" \"$cmd\" | grep -qiE \"vault-radar-license|openai-api-key\"; then printf \"%s\" \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"Access to secret files (Vault Radar license / OpenAI API key) is blocked. They are fetched from Vault by helper scripts and must never enter the AI context.\\\"}}\"; fi",
+            "command": "input=$(cat); cmd=$(printf \"%s\" \"$input\" | jq -r \".tool_input.command\"); if printf \"%s\" \"$cmd\" | grep -qiE \"vault-radar-license|openai-api-key|hcp-terraform-env|TFE_TOKEN|TF_TOKEN_app_terraform_io\"; then printf \"%s\" \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"Access to secret files or token variables is blocked. They are fetched from Vault by helper scripts and must never enter the AI context.\\\"}}\"; fi",
             "timeout": 10,
             "statusMessage": "Checking license-file guard..."
           },

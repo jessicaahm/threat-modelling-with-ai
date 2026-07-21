@@ -33,14 +33,28 @@ it) and denies edits to `.pre-commit-config.yaml` so the hook can't be rewritten
 leak it via the allowlisted `pre-commit run`. Note these are harness-level controls,
 not OS-level guarantees.
 
+## Vault Radar VS Code extension connection
+
+The `hashicorp.vault-radar` extension (installed via `.devcontainer/devcontainer.json`) has no
+`settings.json` key for its Vault connection (address/namespace/token) -- that's entered once
+through the extension's own "Add Vault Connection" dialog in the Activity Bar. After the
+devcontainer starts (with `VAULT_USERNAME`/`VAULT_PASSWORD` set on the host so
+`script/devcontainer-poststart.sh` can log in via userpass), run:
+
+```bash
+script/print-radar-ide-connection.sh
+```
+
+in your own terminal (don't paste its output back into an AI assistant) to get the address and
+namespace to paste in, plus a reminder to read the token yourself from `~/.vault-token`.
+
 ## Vault Radar MCP server
 
 `.mcp.json` configures the [Vault Radar MCP
-server](https://developer.hashicorp.com/hcp/docs/vault-radar/mcp-server/deploy) via Docker. It
-needs `HCP_PROJECT_ID`, `HCP_CLIENT_ID`, and `HCP_CLIENT_SECRET` (an HCP service principal with
-viewer role) in the environment — the config uses bare `-e VARNAME` pass-through, so no secret is
-ever written into `.mcp.json` itself. Fetch them into your shell before launching a client that
-uses the MCP server:
+server](https://developer.hashicorp.com/hcp/docs/vault-radar/mcp-server/deploy) as a direct stdio
+binary. It needs `HCP_PROJECT_ID`, `HCP_CLIENT_ID`, and `HCP_CLIENT_SECRET` (an HCP service
+principal with viewer role) in the environment. No secret is written into `.mcp.json`. Fetch them
+into your shell before launching a client that uses the MCP server:
 
 ```bash
 source script/fetch-vault-radar-mcp-creds.sh
@@ -49,30 +63,68 @@ source script/fetch-vault-radar-mcp-creds.sh
 This reads the three values from the same Vault secret as the Radar license (namespace `admin`,
 mount `tmai`, secret `radar`, subkeys `HCP_PROJECT_ID`/`HCP_CLIENT_ID`/`HCP_CLIENT_SECRET`) and
 exports them for the current session only — values are never printed. Start Claude Code (or
-another MCP client) from that same shell so it inherits the exports. The Docker image tag is
-currently `latest`; pin it (e.g. to match CI's `vault-radar` pin of `0.50.0-1`) once you've
-confirmed a specific MCP server release works for you.
+another MCP client) from that same shell so it inherits the exports. The binary version is pinned
+in `.devcontainer/Dockerfile`.
 
-### Automatic fetch on devcontainer startup (optional)
+## Terraform MCP server
 
-To skip the manual `source` step, the devcontainer can fetch the same three credentials
+`.mcp.json` also configures the [Terraform MCP
+server](https://developer.hashicorp.com/terraform/mcp-server) as a direct stdio binary with the
+public Registry and HCP Terraform toolsets. The binary is pinned and installed during the
+devcontainer build; Docker is not required inside the container.
+
+Terraform MCP authenticates to HCP Terraform with `TFE_TOKEN`. The Terraform CLI uses the same
+token through `TF_TOKEN_app_terraform_io`, while `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE` select
+the existing HCP Terraform target for the empty `cloud {}` block in `infrastructure/versions.tf`.
+All three source values live in Vault KV-v2 at namespace `admin`, mount `tmai`, secret `terraform`:
+
+- `TFE_TOKEN`
+- `TF_CLOUD_ORGANIZATION`
+- `TF_WORKSPACE`
+
+For a memory-only manual session, log in to Vault and source the fetch script before starting the
+MCP client:
+
+```bash
+vault login
+source script/fetch-terraform-mcp-creds.sh
+claude
+```
+
+The script exports the token under both client-specific names and never prints any value. Do not
+put the token in `.mcp.json`, a prompt, shell history, or a tracked file. Destructive Terraform MCP
+operations remain disabled because `ENABLE_TF_OPERATIONS` is not set. Claude hooks also deny direct
+access to the runtime token file and Bash commands that name either token environment variable.
+
+Example read-only prompt:
+
+```text
+Read TF_CLOUD_ORGANIZATION and TF_WORKSPACE from the environment. Use those values
+with Terraform MCP to get the workspace details. Do not read or print TFE_TOKEN,
+and do not create a run or make changes.
+```
+
+### Automatic MCP credential fetch on devcontainer startup (optional)
+
+To skip the manual `source` steps, the devcontainer can fetch both MCP servers' credentials
 automatically on every start using Vault **userpass** auth (non-interactive: credentials are passed
 as arguments, not typed at a prompt):
 
-1. Ensure you have a Vault userpass account with read-only access to `tmai/data/radar`.
+1. Ensure you have a Vault userpass account with read-only access to `tmai/data/radar` and
+   `tmai/data/terraform` in namespace `admin`.
 2. On your **host** (not in the container), set `VAULT_USERNAME` and `VAULT_PASSWORD` in your shell
    profile or an untracked `.env` — `devcontainer.json`'s `remoteEnv` passes them through via
    `${localEnv:...}`.
 3. On every container start, `postStartCommand` runs `script/devcontainer-poststart.sh`, which logs
-   in via userpass and writes the three HCP values to `~/.hcp-radar-env` (mode 600, never printed,
-   not in the repo). If `VAULT_USERNAME`/`VAULT_PASSWORD` aren't set, this step is a no-op and falls
-   back to the manual flow above.
-4. `postCreateCommand` runs `script/devcontainer-postcreate.sh` once, which adds a line to
-   `~/.zshrc`/`~/.bashrc` sourcing `~/.hcp-radar-env` if present — so every new shell (and anything
-   launched from it, including Claude Code and the MCP server subprocess) picks up the vars
-   automatically.
+   in via userpass and writes `~/.hcp-radar-env` and `~/.hcp-terraform-env` (mode 600, never printed,
+   not in the repo). If `VAULT_USERNAME`/`VAULT_PASSWORD` aren't set, this step falls back to the
+   manual sourced-script flows above.
+4. `postCreateCommand` runs `script/devcontainer-postcreate.sh` once, which adds lines to
+   `~/.zshrc`/`~/.bashrc` sourcing each runtime environment file if present — so every new shell
+   (and anything launched from it, including Claude Code and the MCP subprocesses) picks up the
+   variables automatically.
 
-Trade-off: this keeps HCP credentials live in the container's filesystem for the whole session
+Trade-off: this keeps HCP credentials live in mode-600 files in the container for the whole session
 (vs. the manual flow's momentary, per-shell exposure), and your Vault **password** sits in a host
 env var/file long-term. Unlike an AppRole `secret_id`, this is a shared human credential rather than
 a scoped machine identity — rotating your personal Vault password breaks this integration until you

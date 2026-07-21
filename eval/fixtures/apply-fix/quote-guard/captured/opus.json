@@ -1,6 +1,9 @@
 {
   "model_alias": "opus",
-  "usage": { "input_tokens": 940, "output_tokens": 110 },
+  "usage": {
+    "input_tokens": 2541,
+    "output_tokens": 208
+  },
   "made_edit": true,
   "edited_files": {
     "script/clean.sh": [
@@ -12,6 +15,11 @@
       "rm -f \"$TARGET\""
     ]
   },
-  "judge": { "security": 5, "efficiency": 5, "performance": 5, "note": "Correct, minimal." },
-  "report": "[blocking-this-diff] Quoted $TARGET. bash -n clean."
+  "report": "[blocking-this-diff] Quoted $TARGET in rm to prevent word-splitting/glob injection. Changed script/clean.sh:6 from `rm -f $TARGET` to `rm -f \"$TARGET\"`; set flags and IFS preserved. Re-read edited region.",
+  "provenance": {
+    "tool": "capture-apply-fix.sh",
+    "captured_at": "2026-07-20T02:44:35Z",
+    "model_id": "claude-opus-4-8",
+    "live": true
+  }
 }
